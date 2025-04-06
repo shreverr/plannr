@@ -20,11 +20,13 @@ export function QuickActions() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Import Student Data</CardTitle>
-            <CardDescription>Update student information</CardDescription>
+            <CardTitle>Manage Rooms</CardTitle>
+            <CardDescription>Upload and manage room information</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" variant="outline">Import Data</Button>
+            <Button className="w-full" asChild>
+              <Link to="/rooms">Manage Rooms</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>

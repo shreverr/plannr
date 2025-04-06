@@ -11,10 +11,17 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as RoomsImport } from './routes/rooms'
 import { Route as NewSeatingPlanImport } from './routes/new-seating-plan'
 import { Route as IndexImport } from './routes/index'
 
 // Create/Update Routes
+
+const RoomsRoute = RoomsImport.update({
+  id: '/rooms',
+  path: '/rooms',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const NewSeatingPlanRoute = NewSeatingPlanImport.update({
   id: '/new-seating-plan',
@@ -46,6 +53,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NewSeatingPlanImport
       parentRoute: typeof rootRoute
     }
+    '/rooms': {
+      id: '/rooms'
+      path: '/rooms'
+      fullPath: '/rooms'
+      preLoaderRoute: typeof RoomsImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -54,36 +68,41 @@ declare module '@tanstack/react-router' {
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/new-seating-plan': typeof NewSeatingPlanRoute
+  '/rooms': typeof RoomsRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/new-seating-plan': typeof NewSeatingPlanRoute
+  '/rooms': typeof RoomsRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/new-seating-plan': typeof NewSeatingPlanRoute
+  '/rooms': typeof RoomsRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/new-seating-plan'
+  fullPaths: '/' | '/new-seating-plan' | '/rooms'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/new-seating-plan'
-  id: '__root__' | '/' | '/new-seating-plan'
+  to: '/' | '/new-seating-plan' | '/rooms'
+  id: '__root__' | '/' | '/new-seating-plan' | '/rooms'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NewSeatingPlanRoute: typeof NewSeatingPlanRoute
+  RoomsRoute: typeof RoomsRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NewSeatingPlanRoute: NewSeatingPlanRoute,
+  RoomsRoute: RoomsRoute,
 }
 
 export const routeTree = rootRoute
@@ -97,7 +116,8 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/new-seating-plan"
+        "/new-seating-plan",
+        "/rooms"
       ]
     },
     "/": {
@@ -105,6 +125,9 @@ export const routeTree = rootRoute
     },
     "/new-seating-plan": {
       "filePath": "new-seating-plan.tsx"
+    },
+    "/rooms": {
+      "filePath": "rooms.tsx"
     }
   }
 }

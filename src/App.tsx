@@ -1,4 +1,3 @@
-import "./App.css";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { DashboardStats } from "@/components/dashboard/stats";
