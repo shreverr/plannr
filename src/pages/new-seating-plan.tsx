@@ -3,18 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { DatePicker } from "@/components/ui/date-picker";
 import { FileInput } from "@/components/ui/file-input";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { TimePicker12Demo } from "@/components/time-picker-demo";
 
 // Define form validation schema
 const formSchema = z.object({
   examinationName: z.string().min(2, { message: "Examination name is required" }),
-  date: z.date({ required_error: "Examination date is required" }),
-  time: z.string().min(1, { message: "Examination time is required" }),
+  date: z.string().min(1, { message: "Examination date is required" }),
+  fromTime: z.date({ required_error: "Start time is required" }),
+  toTime: z.date({ required_error: "End time is required" }),
   cloakRoomVenue: z.string().min(2, { message: "Cloak room venue is required" }),
   mandatoryInstructions: z.string().optional(),
 });
@@ -29,7 +30,9 @@ function NewSeatingPlan() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       examinationName: "",
-      time: "",
+      date: "",
+      fromTime: new Date(new Date().setHours(9, 0, 0, 0)),
+      toTime: new Date(new Date().setHours(12, 0, 0, 0)),
       cloakRoomVenue: "",
       mandatoryInstructions: "",
     },
@@ -59,7 +62,7 @@ function NewSeatingPlan() {
                 <FormItem>
                   <FormLabel>Examination Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Final Mathematics Exam" {...field} />
+                    <Input placeholder="e.g. ETE " {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -88,31 +91,48 @@ function NewSeatingPlan() {
               control={form.control}
               name="date"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
+                <FormItem>
                   <FormLabel>Examination Date</FormLabel>
-                  <DatePicker 
-                    date={field.value} 
-                    setDate={field.onChange}
-                  />
+                  <FormControl>
+                    <Input
+                      placeholder="DD-MM-YYYY"
+                      {...field}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
             {/* Examination Time */}
-            <FormField
-              control={form.control}
-              name="time"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Examination Time</FormLabel>
-                  <FormControl>
-                    <Input type="time" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="fromTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Time</FormLabel>
+                    <FormControl>
+                      <TimePicker12Demo date={field.value} setDate={field.onChange} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="toTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Time</FormLabel>
+                    <FormControl>
+                      <TimePicker12Demo date={field.value} setDate={field.onChange} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
 
           {/* Mandatory Instructions */}
