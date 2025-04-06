@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { FileInput } from "@/components/ui/file-input";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -11,6 +10,8 @@ import * as z from "zod";
 import { TimePicker12Demo } from "@/components/time-picker-demo";
 import { RoomSelectionTable } from "@/components/rooms/room-selection-table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { StudentUploadCard, type StudentUploadData } from "@/components/student-upload/student-upload-card";
+import { Plus } from "lucide-react";
 
 // Define form validation schema
 const formSchema = z.object({
@@ -29,7 +30,11 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 function NewSeatingPlan() {
-  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [studentUploads, setStudentUploads] = useState<StudentUploadData[]>([{
+    branchCode: "",
+    subjectCode: "",
+    csvFile: null
+  }]);
   
   // Initialize form with default values
   const form = useForm<FormValues>({
@@ -42,14 +47,34 @@ function NewSeatingPlan() {
       cloakRoomVenue: "",
       mandatoryInstructions: "",
       examType: "regular",
+      branchCode: "",
+      subjectCode: "",
     },
   });
 
   const onSubmit = (data: FormValues) => {
     // Handle form submission
     console.log("Form data:", data);
-    console.log("CSV file:", csvFile);
+    console.log("Student uploads:", studentUploads);
     // Here you would typically send the data to your backend
+  };
+
+  const handleAddUpload = () => {
+    setStudentUploads([...studentUploads, {
+      branchCode: "",
+      subjectCode: "",
+      csvFile: null
+    }]);
+  };
+
+  const handleDeleteUpload = (index: number) => {
+    setStudentUploads(studentUploads.filter((_, i) => i !== index));
+  };
+
+  const handleUploadChange = (index: number, data: StudentUploadData) => {
+    const newUploads = [...studentUploads];
+    newUploads[index] = data;
+    setStudentUploads(newUploads);
   };
 
   return (
@@ -192,22 +217,32 @@ function NewSeatingPlan() {
             <RoomSelectionTable />
           </div>
 
-          {/* CSV Upload */}
-          <div className="space-y-2">
-            <Label htmlFor="csvUpload">Upload Students CSV</Label>
-            <FileInput 
-              id="csvUpload"
-              accept=".csv"
-              onFileSelect={setCsvFile}
-            />
-            <p className="text-sm text-muted-foreground">
-              Upload a CSV file containing student information.
-            </p>
-            {csvFile && (
-              <p className="text-sm text-green-600">
-                File selected: {csvFile.name}
-              </p>
-            )}
+          {/* Student Upload Cards */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <Label>Student Information</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddUpload}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Branch
+              </Button>
+            </div>
+            <div className="space-y-4">
+              {studentUploads.map((upload, index) => (
+                <StudentUploadCard
+                  key={index}
+                  data={upload}
+                  onChange={(data) => handleUploadChange(index, data)}
+                  onDelete={() => handleDeleteUpload(index)}
+                  showDelete={studentUploads.length > 1}
+                />
+              ))}
+            </div>
           </div>
 
           {/* Submit Button */}
