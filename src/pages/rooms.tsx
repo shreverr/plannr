@@ -2,9 +2,10 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import useRoomStore from "@/store/rooms.store"
 import { Button } from "@/components/ui/button"
 import { v4 as uuidv4 } from 'uuid'
+import { EditRoomDialog } from "@/components/rooms/edit-room-dialog"
 
 function RoomsManagement() {
-  const { rooms, addRooms, removeRoomById } = useRoomStore()
+  const { rooms, addRooms, removeRoomById, updateRoom, clearRooms } = useRoomStore()
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -62,12 +63,27 @@ function RoomsManagement() {
       {rooms.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Room List</CardTitle>
-            <CardDescription>Uploaded rooms and their details</CardDescription>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Room List</CardTitle>
+                <CardDescription>Uploaded rooms and their details</CardDescription>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to delete all rooms? This action cannot be undone.')) {
+                    clearRooms()
+                  }
+                }}
+              >
+                Delete All
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="divide-y">
-              {rooms.map(room => (
+              {[...rooms].sort((a, b) => a.name.localeCompare(b.name)).map(room => (
                 <div key={room.id} className="py-3 flex justify-between items-center">
                   <div>
                     <div className="font-medium">{room.name}</div>
@@ -76,7 +92,7 @@ function RoomsManagement() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    {/* <div className="text-sm text-muted-foreground">ID: {room.id}</div> */}
+                    <EditRoomDialog room={room} onSave={updateRoom} />
                     <Button
                       variant="destructive"
                       size="sm"

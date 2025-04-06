@@ -14,6 +14,7 @@ type RoomStore = {
   getRooms: () => Room[];
   clearRooms: () => void;
   removeRoomById: (id: string) => void;
+  updateRoom: (updatedRoom: Room) => void;
 }
 
 const useRoomStore = create<RoomStore>()(
@@ -27,6 +28,11 @@ const useRoomStore = create<RoomStore>()(
       clearRooms: () => set({ rooms: [] }),
       removeRoomById: (id) => set((state) => ({
         rooms: state.rooms.filter(room => room.id !== id)
+      })),
+      updateRoom: (updatedRoom) => set((state) => ({
+        rooms: state.rooms.map(room => 
+          room.id === updatedRoom.id ? updatedRoom : room
+        )
       })),
     }),
     {
