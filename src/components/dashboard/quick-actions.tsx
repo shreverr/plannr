@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Link } from "@tanstack/react-router"
 
 export function QuickActions() {
   return (
@@ -12,7 +13,9 @@ export function QuickActions() {
             <CardDescription>Generate a new seating arrangement</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full">Start New Plan</Button>
+            <Button className="w-full" asChild>
+              <Link to="/new-seating-plan">Start New Plan</Link>
+            </Button>
           </CardContent>
         </Card>
         <Card>
