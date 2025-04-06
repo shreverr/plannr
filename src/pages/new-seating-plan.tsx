@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { TimePicker12Demo } from "@/components/time-picker-demo";
 import { RoomSelectionTable } from "@/components/rooms/room-selection-table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 // Define form validation schema
 const formSchema = z.object({
@@ -20,6 +21,9 @@ const formSchema = z.object({
   cloakRoomVenue: z.string().min(2, { message: "Cloak room venue is required" }),
   mandatoryInstructions: z.string().optional(),
   selectedRoom: z.string({ required_error: "Please select an examination room" }),
+  examType: z.enum(["regular", "reappear"], {
+    required_error: "Please select an exam type",
+  }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -37,6 +41,7 @@ function NewSeatingPlan() {
       toTime: new Date(new Date().setHours(12, 0, 0, 0)),
       cloakRoomVenue: "",
       mandatoryInstructions: "",
+      examType: "regular",
     },
   });
 
@@ -55,6 +60,29 @@ function NewSeatingPlan() {
       </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* Exam Type */}
+          <FormField
+            control={form.control}
+            name="examType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Exam Type</FormLabel>
+                <FormControl>
+                  <ToggleGroup
+                    type="single"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    variant="outline"
+                  >
+                    <ToggleGroupItem value="regular">Regular</ToggleGroupItem>
+                    <ToggleGroupItem value="reappear">Reappear</ToggleGroupItem>
+                  </ToggleGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <div className="grid gap-6 md:grid-cols-2">
             {/* Examination Name */}
             <FormField
