@@ -1,14 +1,10 @@
-import { useState } from "react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-
-type Room = {
-  id: string
-  name: string
-  capacity: number
-}
+import useRoomStore from "@/store/rooms.store"
+import { Button } from "@/components/ui/button"
+import { v4 as uuidv4 } from 'uuid'
 
 function RoomsManagement() {
-  const [rooms, setRooms] = useState<Room[]>([])
+  const { rooms, addRooms, removeRoomById } = useRoomStore()
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -18,20 +14,20 @@ function RoomsManagement() {
     reader.onload = (e) => {
       const text = e.target?.result as string
       const lines = text.split('\n')
-    //   const headers = lines[0].split(',').map(header => header.trim())
       
       const parsedRooms = lines.slice(1)
         .filter(line => line.trim())
         .map(line => {
           const values = line.split(',').map(value => value.trim())
           return {
-            id: values[0],
-            name: values[1],
-            capacity: parseInt(values[2], 10)
+            id: uuidv4(),
+            name: values[0],
+            rows: parseInt(values[1], 10),
+            columns: parseInt(values[2], 10)
           }
         })
 
-      setRooms(parsedRooms)
+      addRooms(parsedRooms)
     }
     reader.readAsText(file)
   }
@@ -57,7 +53,7 @@ function RoomsManagement() {
                 hover:file:bg-violet-100"
             />
             <div className="text-sm text-muted-foreground">
-              CSV format: ID, Room Name, Capacity
+              CSV format: Room Name, Rows, Columns
             </div>
           </div>
         </CardContent>
@@ -75,9 +71,20 @@ function RoomsManagement() {
                 <div key={room.id} className="py-3 flex justify-between items-center">
                   <div>
                     <div className="font-medium">{room.name}</div>
-                    <div className="text-sm text-muted-foreground">Capacity: {room.capacity}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Size: {room.rows} x {room.columns}
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">ID: {room.id}</div>
+                  <div className="flex items-center gap-4">
+                    {/* <div className="text-sm text-muted-foreground">ID: {room.id}</div> */}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeRoomById(room.id)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
