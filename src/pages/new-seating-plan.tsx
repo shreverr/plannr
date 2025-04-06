@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { TimePicker12Demo } from "@/components/time-picker-demo";
+import { RoomSelectionTable } from "@/components/rooms/room-selection-table";
 
 // Define form validation schema
 const formSchema = z.object({
@@ -18,6 +19,7 @@ const formSchema = z.object({
   toTime: z.date({ required_error: "End time is required" }),
   cloakRoomVenue: z.string().min(2, { message: "Cloak room venue is required" }),
   mandatoryInstructions: z.string().optional(),
+  selectedRoom: z.string({ required_error: "Please select an examination room" }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -156,6 +158,11 @@ function NewSeatingPlan() {
               </FormItem>
             )}
           />
+
+          {/* Room Selection */}
+          <div className="space-y-2">
+            <RoomSelectionTable />
+          </div>
 
           {/* CSV Upload */}
           <div className="space-y-2">
