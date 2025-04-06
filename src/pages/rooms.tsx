@@ -3,9 +3,13 @@ import useRoomStore from "@/store/rooms.store"
 import { Button } from "@/components/ui/button"
 import { v4 as uuidv4 } from 'uuid'
 import { EditRoomDialog } from "@/components/rooms/edit-room-dialog"
+import { ImportRoomsDialog } from "@/components/rooms/import-rooms-dialog"
+import { AddRoomDialog } from "@/components/rooms/add-room-dialog"
+import { useState } from "react"
 
 function RoomsManagement() {
   const { rooms, addRooms, removeRoomById, updateRoom, clearRooms } = useRoomStore()
+  const [importRooms, setImportRooms] = useState<Array<{ id: string; name: string; rows: number; columns: number; }>>([])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -28,18 +32,28 @@ function RoomsManagement() {
           }
         })
 
-      addRooms(parsedRooms)
+      setImportRooms(parsedRooms)
     }
     reader.readAsText(file)
   }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload Rooms</CardTitle>
-          <CardDescription>Upload a CSV file containing room information</CardDescription>
-        </CardHeader>
+      <ImportRoomsDialog
+        rooms={importRooms}
+        open={importRooms.length > 0}
+        onConfirm={(rooms) => {
+          addRooms(rooms)
+          setImportRooms([])
+        }}
+        onCancel={() => setImportRooms([])}
+      />
+      <div className="flex justify-between items-start gap-6">
+        <Card className="flex-1">
+          <CardHeader>
+            <CardTitle>Upload Rooms</CardTitle>
+            <CardDescription>Upload a CSV file containing room information</CardDescription>
+          </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <input
@@ -52,13 +66,24 @@ function RoomsManagement() {
                 file:text-sm file:font-semibold
                 file:bg-violet-50 file:text-violet-700
                 hover:file:bg-violet-100"
+              key={importRooms.length > 0 ? 'uploading' : 'cleared'}
             />
             <div className="text-sm text-muted-foreground">
               CSV format: Room Name, Rows, Columns
             </div>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+        <Card className="flex-1">
+          <CardHeader>
+            <CardTitle>Add Room Manually</CardTitle>
+            <CardDescription>Create a new room by entering its details</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AddRoomDialog onAdd={(room) => addRooms([room])} />
+          </CardContent>
+        </Card>
+      </div>
 
       {rooms.length > 0 && (
         <Card>
