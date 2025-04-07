@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,8 +9,10 @@ import * as z from "zod";
 import { TimePicker12Demo } from "@/components/time-picker-demo";
 import { RoomSelectionTable } from "@/components/rooms/room-selection-table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { StudentUploadCard, type StudentUploadData } from "@/components/student-upload/student-upload-card";
+import { StudentUploadCard } from "@/components/student-upload/student-upload-card";
 import { Plus } from "lucide-react";
+import useSeatingPlanStore from "@/store/seating-plan.store";
+import { useEffect } from "react";
 
 // Define form validation schema
 const formSchema = z.object({
@@ -20,8 +21,8 @@ const formSchema = z.object({
   fromTime: z.date({ required_error: "Start time is required" }),
   toTime: z.date({ required_error: "End time is required" }),
   cloakRoomVenue: z.string().min(2, { message: "Cloak room venue is required" }),
-  mandatoryInstructions: z.string().optional(),
-  selectedRoom: z.string({ required_error: "Please select an examination room" }),
+  mandatoryInstructions: z.string().min(2, { message: "Mandatory instructions are required" }),
+  selectedRooms: z.array(z.string()).min(1, { message: "Please select at least one examination room" }),
   examType: z.enum(["regular", "reappear"], {
     required_error: "Please select an exam type",
   }),
@@ -30,51 +31,56 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 function NewSeatingPlan() {
-  const [studentUploads, setStudentUploads] = useState<StudentUploadData[]>([{
-    branchCode: "",
-    subjectCode: "",
-    csvFile: null
-  }]);
+  const { currentPlan, addSeatingPlan, addStudentUpload, updateStudentUpload, deleteStudentUpload } = useSeatingPlanStore();
   
-  // Initialize form with default values
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      examinationName: "",
-      date: "",
-      fromTime: new Date(new Date().setHours(9, 0, 0, 0)),
-      toTime: new Date(new Date().setHours(12, 0, 0, 0)),
-      cloakRoomVenue: "",
-      mandatoryInstructions: "",
-      examType: "regular",
-      branchCode: "",
-      subjectCode: "",
+      examinationName: currentPlan?.examinationName || "",
+      date: currentPlan?.date || "",
+      fromTime: currentPlan?.fromTime || new Date(new Date().setHours(9, 0, 0, 0)),
+      toTime: currentPlan?.toTime || new Date(new Date().setHours(12, 0, 0, 0)),
+      cloakRoomVenue: currentPlan?.cloakRoomVenue || "",
+      mandatoryInstructions: currentPlan?.mandatoryInstructions || "",
+      examType: currentPlan?.examType || "regular",
+      selectedRooms: currentPlan?.selectedRooms || [],
     },
   });
 
+  useEffect(() => {
+    if (currentPlan) {
+      form.reset({
+        examinationName: currentPlan.examinationName,
+        date: currentPlan.date,
+        fromTime: currentPlan.fromTime,
+        toTime: currentPlan.toTime,
+        cloakRoomVenue: currentPlan.cloakRoomVenue,
+        mandatoryInstructions: currentPlan.mandatoryInstructions,
+        examType: currentPlan.examType,
+        selectedRooms: currentPlan.selectedRooms,
+      });
+    }
+  }, [currentPlan, form]);
+
   const onSubmit = (data: FormValues) => {
-    // Handle form submission
-    console.log("Form data:", data);
-    console.log("Student uploads:", studentUploads);
-    // Here you would typically send the data to your backend
+    const seatingPlan = {
+      ...data,
+      studentUploads: currentPlan?.studentUploads || []
+    };
+    addSeatingPlan(seatingPlan);
+    form.reset();
   };
 
   const handleAddUpload = () => {
-    setStudentUploads([...studentUploads, {
-      branchCode: "",
-      subjectCode: "",
-      csvFile: null
-    }]);
+    addStudentUpload();
   };
 
   const handleDeleteUpload = (index: number) => {
-    setStudentUploads(studentUploads.filter((_, i) => i !== index));
+    deleteStudentUpload(index);
   };
 
-  const handleUploadChange = (index: number, data: StudentUploadData) => {
-    const newUploads = [...studentUploads];
-    newUploads[index] = data;
-    setStudentUploads(newUploads);
+  const handleUploadChange = (index: number, data: any) => {
+    updateStudentUpload(index, data);
   };
 
   return (
@@ -233,13 +239,13 @@ function NewSeatingPlan() {
               </Button>
             </div>
             <div className="space-y-4">
-              {studentUploads.map((upload, index) => (
+              {(currentPlan?.studentUploads || []).map((upload, index) => (
                 <StudentUploadCard
                   key={index}
                   data={upload}
                   onChange={(data) => handleUploadChange(index, data)}
                   onDelete={() => handleDeleteUpload(index)}
-                  showDelete={studentUploads.length > 1}
+                  showDelete={(currentPlan?.studentUploads || []).length > 1}
                 />
               ))}
             </div>
