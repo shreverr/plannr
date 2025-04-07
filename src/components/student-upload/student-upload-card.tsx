@@ -4,7 +4,6 @@ import { Label } from "@/components/ui/label";
 import { FileInput } from "@/components/ui/file-input";
 import { Card, CardContent } from "@/components/ui/card";
 import { X } from "lucide-react";
-import { useState } from "react";
 
 export type StudentUploadData = {
   branchCode: string;

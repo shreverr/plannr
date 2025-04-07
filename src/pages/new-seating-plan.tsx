@@ -12,7 +12,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { StudentUploadCard } from "@/components/student-upload/student-upload-card";
 import { Plus } from "lucide-react";
 import useSeatingPlanStore from "@/store/seating-plan.store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { SeatingPlanPreview } from "@/components/seating-plan/seating-plan-preview";
 
 // Define form validation schema
 const formSchema = z.object({
@@ -32,14 +33,15 @@ type FormValues = z.infer<typeof formSchema>;
 
 function NewSeatingPlan() {
   const { currentPlan, addSeatingPlan, addStudentUpload, updateStudentUpload, deleteStudentUpload } = useSeatingPlanStore();
+  const [previewOpen, setPreviewOpen] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       examinationName: currentPlan?.examinationName || "",
       date: currentPlan?.date || "",
-      fromTime: currentPlan?.fromTime || new Date(new Date().setHours(9, 0, 0, 0)),
-      toTime: currentPlan?.toTime || new Date(new Date().setHours(12, 0, 0, 0)),
+      fromTime: currentPlan?.fromTime ? new Date(currentPlan.fromTime) : new Date(new Date().setHours(9, 0, 0, 0)),
+      toTime: currentPlan?.toTime ? new Date(currentPlan.toTime) : new Date(new Date().setHours(12, 0, 0, 0)),
       cloakRoomVenue: currentPlan?.cloakRoomVenue || "",
       mandatoryInstructions: currentPlan?.mandatoryInstructions || "",
       examType: currentPlan?.examType || "regular",
@@ -68,8 +70,8 @@ function NewSeatingPlan() {
       ...data,
       studentUploads: currentPlan?.studentUploads || []
     };
-    console.log('Creating new seating plan:', seatingPlan);
     addSeatingPlan(seatingPlan);
+    setPreviewOpen(true);
     form.reset();
   };
 
@@ -255,8 +257,15 @@ function NewSeatingPlan() {
 
           {/* Submit Button */}
           <Button type="submit" className="w-full md:w-auto">
-            Create Seating Plan
+            Generate Seating Plan
           </Button>
+          {currentPlan && (
+            <SeatingPlanPreview
+              plan={currentPlan}
+              open={previewOpen}
+              onOpenChange={setPreviewOpen}
+            />
+          )}
         </form>
       </Form>
     </div>
