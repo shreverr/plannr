@@ -49,15 +49,16 @@ function NewSeatingPlan() {
 
   useEffect(() => {
     if (currentPlan) {
+      const currentValues = form.getValues();
       form.reset({
-        examinationName: currentPlan.examinationName,
-        date: currentPlan.date,
-        fromTime: currentPlan.fromTime,
-        toTime: currentPlan.toTime,
-        cloakRoomVenue: currentPlan.cloakRoomVenue,
-        mandatoryInstructions: currentPlan.mandatoryInstructions,
-        examType: currentPlan.examType,
-        selectedRooms: currentPlan.selectedRooms,
+        examinationName: currentValues.examinationName || currentPlan.examinationName,
+        date: currentValues.date || currentPlan.date,
+        fromTime: currentValues.fromTime || currentPlan.fromTime,
+        toTime: currentValues.toTime || currentPlan.toTime,
+        cloakRoomVenue: currentValues.cloakRoomVenue || currentPlan.cloakRoomVenue,
+        mandatoryInstructions: currentValues.mandatoryInstructions || currentPlan.mandatoryInstructions,
+        examType: currentValues.examType || currentPlan.examType,
+        selectedRooms: currentValues.selectedRooms || currentPlan.selectedRooms,
       });
     }
   }, [currentPlan, form]);
@@ -67,6 +68,7 @@ function NewSeatingPlan() {
       ...data,
       studentUploads: currentPlan?.studentUploads || []
     };
+    console.log('Creating new seating plan:', seatingPlan);
     addSeatingPlan(seatingPlan);
     form.reset();
   };

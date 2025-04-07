@@ -70,7 +70,15 @@ const useSeatingPlanStore = create<SeatingPlanStore>()(
       })),
     addStudentUpload: () =>
       set((state) => {
-        if (!state.currentPlan) return state;
+        if (!state.currentPlan) {
+          return {
+            ...state,
+            currentPlan: {
+              ...initialSeatingPlan,
+              studentUploads: [{ branchCode: '', subjectCode: '', csvFile: null }]
+            }
+          };
+        }
         return {
           currentPlan: {
             ...state.currentPlan,
