@@ -32,7 +32,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 function NewSeatingPlan() {
-  const { currentPlan, addSeatingPlan, addStudentUpload, updateStudentUpload, deleteStudentUpload } = useSeatingPlanStore();
+  const { currentPlan, addSeatingPlan, addStudentUpload, updateStudentUpload, deleteStudentUpload, setCurrentPlan } = useSeatingPlanStore();
   const [previewOpen, setPreviewOpen] = useState(false);
   
   const form = useForm<FormValues>({
@@ -71,8 +71,8 @@ function NewSeatingPlan() {
       studentUploads: currentPlan?.studentUploads || []
     };
     addSeatingPlan(seatingPlan);
+    setCurrentPlan(seatingPlan);
     setPreviewOpen(true);
-    form.reset();
   };
 
   const handleAddUpload = () => {
