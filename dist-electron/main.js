@@ -315,12 +315,13 @@ async function exampleUsage() {
   const students = [];
   const departments = ["Computer Science", "Electrical Engineering", "Mechanical Engineering"];
   for (let i = 1; i <= 50; i++) {
-    const studentId = `2210991${i.toString().padStart(3, "0")}`;
+    const studentId = `${i}`;
     const name = `Student ${i}`;
     const department = departments[i % departments.length];
     students.push(new Student(studentId, name, department));
   }
   try {
+    console.log(students);
     const outputFile = await generateSeatingPlan({
       outputFile: `./SeatingPlan_${(/* @__PURE__ */ new Date()).toISOString().replace(/[T:.-]/g, "").slice(0, 14)}.pdf`,
       examConfig,

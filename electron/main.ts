@@ -63,7 +63,7 @@ async function exampleUsage() {
   
   // Generate sample student data
   for (let i = 1; i <= 50; i++) {
-    const studentId = `2210991${i.toString().padStart(3, '0')}`;
+    const studentId = `${i}`;
     const name = `Student ${i}`;
     const department = departments[i % departments.length];
     students.push(new Student(studentId, name, department));
@@ -71,6 +71,9 @@ async function exampleUsage() {
   
   // 4. Generate the seating plan
   try {
+    console.log(students);
+    
+
     const outputFile = await generateSeatingPlan({
       outputFile: `./SeatingPlan_${new Date().toISOString().replace(/[T:.-]/g, '').slice(0, 14)}.pdf`,
       examConfig,
