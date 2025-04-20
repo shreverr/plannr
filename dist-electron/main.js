@@ -1628,9 +1628,8 @@ function generateAttendanceSheet(options) {
     Math.max(data.students.length, 15);
     const startStudentIndex = (data.currentPage - 1) * maxRows;
     Math.min(startStudentIndex + maxRows, data.students.length);
-    for (let i = 0; i < maxRows; i++) {
-      const studentIndex = startStudentIndex + i;
-      const student = studentIndex < data.students.length ? data.students[studentIndex] : null;
+    for (let i = 0; i < Math.min(maxRows, data.students.length); i++) {
+      const student = data.students[i];
       const currentY = tableTop + rowHeight * (headers[5].includes("\n") ? 1.5 : 1) + i * rowHeight;
       currentX = tableStartX;
       if (currentY + rowHeight > pageHeight - 120) break;
@@ -1640,7 +1639,7 @@ function generateAttendanceSheet(options) {
         if (student) {
           switch (j) {
             case 0:
-              cellText = student.sNo.toString();
+              cellText = (i + 1).toString();
               break;
             case 1:
               cellText = student.batch.toString();
@@ -1654,13 +1653,14 @@ function generateAttendanceSheet(options) {
             case 4:
               cellText = student.universityRollNo;
               break;
-          }
-        } else {
-          if (j === 0 && data.students.length + i < 305) {
-            cellText = (data.students.length + i + 1).toString();
+            default:
+              cellText = "";
           }
         }
-        doc.text(cellText, currentX + 2, currentY + 5, { width: colWidth - 4, align: j < 3 ? "center" : "left" });
+        doc.text(cellText, currentX + 2, currentY + 5, {
+          width: colWidth - 4,
+          align: j < 3 || j == 4 ? "center" : "left"
+        });
         currentX += colWidth;
       });
     }

@@ -125,9 +125,8 @@ export function generateAttendanceSheet(options: AttendanceOptions): Promise<str
     const startStudentIndex = (data.currentPage - 1) * maxRows; // Assuming pagination logic if needed
     const endStudentIndex = Math.min(startStudentIndex + maxRows, data.students.length);
 
-    for (let i = 0; i < maxRows; i++) {
-        const studentIndex = startStudentIndex + i;
-        const student = studentIndex < data.students.length ? data.students[studentIndex] : null;
+    for (let i = 0; i < Math.min(maxRows, data.students.length); i++) { // Changed to use actual student count
+        const student = data.students[i];
         const currentY = tableTop + rowHeight * (headers[5].includes('\n') ? 1.5 : 1) + i * rowHeight;
         currentX = tableStartX;
 
@@ -139,20 +138,19 @@ export function generateAttendanceSheet(options: AttendanceOptions): Promise<str
             let cellText = '';
             if (student) {
                 switch (j) {
-                    case 0: cellText = student.sNo.toString(); break;
+                    case 0: cellText = (i + 1).toString(); break; // Use row index for S.No
                     case 1: cellText = student.batch.toString(); break;
                     case 2: cellText = student.sem.toString(); break;
                     case 3: cellText = student.studentName; break;
                     case 4: cellText = student.universityRollNo; break;
                     // Columns 5, 6, 7, 8 are empty for signing
+                    default: cellText = ''; // Empty for other columns
                 }
-            } else {
-                 // Handle empty rows - display S.No if needed based on image
-                 if (j === 0 && data.students.length + i < 305) { // Assuming S.No continues as in image
-                     cellText = (data.students.length + i + 1).toString();
-                 }
             }
-            doc.text(cellText, currentX + 2, currentY + 5, { width: colWidth - 4, align: j < 3 ? 'center' : 'left' });
+            doc.text(cellText, currentX + 2, currentY + 5, { 
+                width: colWidth - 4, 
+                align: j < 3 || j == 4 ? 'center' : 'left' 
+            });
             currentX += colWidth;
         });
     }
