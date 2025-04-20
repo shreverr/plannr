@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import path, { dirname } from 'path';
 
 // Polyfill for __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -175,12 +175,12 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     pageNumber++;
     
     // Try to add logo if exists
-    if (examConfig.logoPath) {
+    if (true) {
       try {
-        doc.image(examConfig.logoPath, 20, 20, { width: 40, height: 30 });
+        doc.image(path.join(process.env.VITE_PUBLIC, './image.png'), 20, 20, { width: 40, height: 30 });
       } catch (err) {
         // Skip if image not found
-        console.log(`Warning: Logo image not found at ${examConfig.logoPath}`);
+        console.log(`Warning: image image not found at ${path.join(process.env.VITE_PUBLIC, './image.png')}`);
       }
     }
     
@@ -328,14 +328,16 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     
     // Header row
     doc.rect(40, summaryStartY, summaryWidth, rowHeight)
-       .fillColor(colors.black)
+       .fillColor(colors.white)
        .fill();
     
-    doc.fillColor(colors.white);
-    doc.text("ROLL NUMBERS", 40 + 5, summaryStartY + 7, { width: summaryColWidths[0] - 10, align: 'center' });
-    doc.text("PRESENT", 40 + summaryColWidths[0] + 5, summaryStartY + 7, 
+    doc.fillColor(colors.black)
+       .fontSize(9);  // Set font size to 9 for the summary table
+    
+    doc.text("Branch", 40 + 5, summaryStartY + 7, { width: summaryColWidths[0] - 10, align: 'center' });
+    doc.text("Appearing", 40 + summaryColWidths[0] + 5, summaryStartY + 7, 
             { width: summaryColWidths[1] - 10, align: 'center' });
-    doc.text("ABSENT", 40 + summaryColWidths[0] + summaryColWidths[1] + 5, summaryStartY + 7, 
+    doc.text("Subject", 40 + summaryColWidths[0] + summaryColWidths[1] + 5, summaryStartY + 7, 
             { width: summaryColWidths[2] - 10, align: 'center' });
     
     // Data rows
@@ -363,7 +365,14 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     doc.strokeColor(colors.black);
     
     // Vertical lines
-    let xPos = 40;
+    let xPos = 40; // Starting position
+    
+    // Draw the leftmost vertical line first
+    doc.moveTo(xPos, summaryStartY)
+       .lineTo(xPos, summaryStartY + rowHeight * 3)
+       .stroke();
+    
+    // Then draw the remaining vertical lines
     for (const width of summaryColWidths) {
       xPos += width;
       doc.moveTo(xPos, summaryStartY)

@@ -4,9 +4,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 import { app, BrowserWindow, ipcMain } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath as fileURLToPath$1 } from "node:url";
-import path from "node:path";
+import path$1 from "node:path";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
+import path, { dirname } from "path";
 import fs from "fs";
 import PDFDocument from "pdfkit";
 const __filename = fileURLToPath(import.meta.url);
@@ -110,11 +110,11 @@ function generateSeatingPlan(options) {
   const drawHeader = () => {
     doc.fontSize(8).text(`Page No.: ${pageNumber}`, pageWidth - 100, 20, { align: "right" });
     pageNumber++;
-    if (examConfig.logoPath) {
+    {
       try {
-        doc.image(examConfig.logoPath, 20, 20, { width: 40, height: 30 });
+        doc.image(path.join(process.env.VITE_PUBLIC, "./image.png"), 20, 20, { width: 40, height: 30 });
       } catch (err) {
-        console.log(`Warning: Logo image not found at ${examConfig.logoPath}`);
+        console.log(`Warning: image image not found at ${path.join(process.env.VITE_PUBLIC, "./image.png")}`);
       }
     }
     const centerX = pageWidth / 2;
@@ -194,17 +194,17 @@ function generateSeatingPlan(options) {
     const summaryWidth = summaryColWidths.reduce((a, b) => a + b, 0);
     const presentCount = room.seatingGrid.flat().filter((s) => s).length;
     const absentCount = room.capacity - presentCount;
-    doc.rect(40, summaryStartY, summaryWidth, rowHeight).fillColor(colors.black).fill();
-    doc.fillColor(colors.white);
-    doc.text("ROLL NUMBERS", 40 + 5, summaryStartY + 7, { width: summaryColWidths[0] - 10, align: "center" });
+    doc.rect(40, summaryStartY, summaryWidth, rowHeight).fillColor(colors.white).fill();
+    doc.fillColor(colors.black).fontSize(9);
+    doc.text("Branch", 40 + 5, summaryStartY + 7, { width: summaryColWidths[0] - 10, align: "center" });
     doc.text(
-      "PRESENT",
+      "Appearing",
       40 + summaryColWidths[0] + 5,
       summaryStartY + 7,
       { width: summaryColWidths[1] - 10, align: "center" }
     );
     doc.text(
-      "ABSENT",
+      "Subject",
       40 + summaryColWidths[0] + summaryColWidths[1] + 5,
       summaryStartY + 7,
       { width: summaryColWidths[2] - 10, align: "center" }
@@ -243,6 +243,7 @@ function generateSeatingPlan(options) {
     );
     doc.strokeColor(colors.black);
     let xPos = 40;
+    doc.moveTo(xPos, summaryStartY).lineTo(xPos, summaryStartY + rowHeight * 3).stroke();
     for (const width of summaryColWidths) {
       xPos += width;
       doc.moveTo(xPos, summaryStartY).lineTo(xPos, summaryStartY + rowHeight * 3).stroke();
@@ -279,12 +280,12 @@ function generateSeatingPlan(options) {
   });
 }
 createRequire(import.meta.url);
-const __dirname = path.dirname(fileURLToPath$1(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname, "..");
+const __dirname = path$1.dirname(fileURLToPath$1(import.meta.url));
+process.env.APP_ROOT = path$1.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+const MAIN_DIST = path$1.join(process.env.APP_ROOT, "dist-electron");
+const RENDERER_DIST = path$1.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$1.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win;
 async function exampleUsage() {
   const examConfig = {
@@ -334,10 +335,10 @@ async function exampleUsage() {
 }
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: path$1.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs")
+      preload: path$1.join(__dirname, "preload.mjs")
     }
   });
   win.webContents.on("did-finish-load", () => {
@@ -346,7 +347,7 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
+    win.loadFile(path$1.join(RENDERER_DIST, "index.html"));
   }
 }
 app.on("window-all-closed", () => {
