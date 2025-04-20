@@ -18,7 +18,9 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     const [channel, ...omit] = args
     return ipcRenderer.invoke(channel, ...omit)
   },
-
+  generateSeatingP: (data: any) => ipcRenderer.invoke('generate-seating-plan', data),
   // You can expose other APTs you need here.
   // ...
 })
+
+console.log("Preload loaded")

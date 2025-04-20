@@ -1,7 +1,8 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { ExamConfig, generateSeatingPlan, Room, Student } from './generator'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -25,6 +26,64 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
 let win: BrowserWindow | null
+
+async function exampleUsage() {
+  // 1. Create exam configuration
+  const examConfig: ExamConfig = {
+    examName: "END TERM EXAMINATIONS - SPRING 2025",
+    examDate: "20/04/2025",
+    examTime: "09:00 a.m. - 12:00 p.m.",
+    cloakRoom: "OAT, Ground Floor, Le Corbusier Block",
+    instructions: [
+      "1. No student should be allowed to leave the Examination Hall before half time.",
+      "2. Mobile phones/Smart Watches/Electronic devices are strictly prohibited in examination halls.",
+      "3. Students without admit card must report to Examination Wing with University Identity Card.",
+      "4. No student is allowed to carry any paper/book/notes/mobile/calculator inside the examination venue.",
+      "5. Students must reach at least 15 minutes before the start of Examination."
+    ],
+    departmentColors: {
+      "Computer Science": "#BBDEFB",
+      "Electrical Engineering": "#FFCDD2",
+      "Mechanical Engineering": "#C8E6C9"
+    },
+    logoPath: "./university_logo.png" // Optional
+  };
+  
+  // 2. Create rooms
+  const rooms = [
+    new Room("Room A101", 5, 6, "DE-MORGAN BLOCK FIRST FLOOR"),
+    new Room("Room B202", 6, 5, "LE CORBUSIER BLOCK SECOND FLOOR")
+  ];
+  
+  // 3. Create students
+  const students: Student[] = [];
+  
+  // Sample department distribution
+  const departments = ["Computer Science", "Electrical Engineering", "Mechanical Engineering"];
+  
+  // Generate sample student data
+  for (let i = 1; i <= 50; i++) {
+    const studentId = `2210991${i.toString().padStart(3, '0')}`;
+    const name = `Student ${i}`;
+    const department = departments[i % departments.length];
+    students.push(new Student(studentId, name, department));
+  }
+  
+  // 4. Generate the seating plan
+  try {
+    const outputFile = await generateSeatingPlan({
+      outputFile: `./SeatingPlan_${new Date().toISOString().replace(/[T:.-]/g, '').slice(0, 14)}.pdf`,
+      examConfig,
+      students,
+      rooms,
+      assignmentStrategy: 'byDepartment'
+    });
+    
+    console.log(`Seating plan generated successfully: ${outputFile}`);
+  } catch (err) {
+    console.error('Error generating PDF:', err);
+  }
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -65,5 +124,10 @@ app.on('activate', () => {
     createWindow()
   }
 })
+
+ipcMain.handle('generate-seating-plan', async (event, arg) => {
+  const result = exampleUsage();
+  return result;
+});
 
 app.whenReady().then(createWindow)

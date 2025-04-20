@@ -32,6 +32,11 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 function NewSeatingPlan() {
+  useEffect(() => {
+    window.ipcRenderer.generateSeatingP({}).then((response: any) => {
+    });
+  }, []);
+
   const { currentPlan, addSeatingPlan, addStudentUpload, updateStudentUpload, deleteStudentUpload, setCurrentPlan } = useSeatingPlanStore();
   const [previewOpen, setPreviewOpen] = useState(false);
   

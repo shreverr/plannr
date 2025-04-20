@@ -4,9 +4,15 @@ import electron from 'vite-plugin-electron/simple'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      external: ['pdfkit', 'fs', 'path'], // Add fs and path as external dependencies
+    }
+  },
   plugins: [
     TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
     tailwindcss(),
@@ -15,6 +21,17 @@ export default defineConfig({
       main: {
         // Shortcut of `build.lib.entry`.
         entry: 'electron/main.ts',
+        vite: {
+          build: {
+            rollupOptions: {
+              external: ['pdfkit', 'fs', 'path'],
+            },
+            // Enable CommonJS for the main process
+            commonjsOptions: {
+              transformMixedEsModules: true,
+            },
+          },
+        },
       },
       preload: {
         // Shortcut of `build.rollupOptions.input`.
