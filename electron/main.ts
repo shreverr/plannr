@@ -6,6 +6,7 @@ import fs from 'node:fs/promises'; // Import fs promises for async file reading
 import Papa from 'papaparse'; // Import papaparse for CSV parsing
  // Import StudentGroup instead of Student
  import { ExamConfig, generateSeatingPlan, Room, StudentGroup } from './generator'
+import { exampleAttendanceGeneration } from './attendance-gen';
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -211,5 +212,7 @@ ipcMain.handle('generate-seating-plan', async (event, arg) => {
      return { success: false, error: error.message || 'Unknown error' };
   }
 });
+
+exampleAttendanceGeneration()
 
 app.whenReady().then(createWindow)
