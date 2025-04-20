@@ -2,7 +2,8 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { ExamConfig, generateSeatingPlan, Room, Student } from './generator'
+// Import StudentGroup instead of Student
+import { ExamConfig, generateSeatingPlan, Room, StudentGroup } from './generator'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -28,7 +29,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win: BrowserWindow | null
 
 async function exampleUsage() {
-  // 1. Create exam configuration
+  // 1. Create exam configuration (Removed departmentColors)
   const examConfig: ExamConfig = {
     examName: "END TERM EXAMINATIONS - SPRING 2025",
     examDate: "20/04/2025",
@@ -41,50 +42,50 @@ async function exampleUsage() {
       "4. No student is allowed to carry any paper/book/notes/mobile/calculator inside the examination venue.",
       "5. Students must reach at least 15 minutes before the start of Examination."
     ],
-    departmentColors: {
-      "Computer Science": "#BBDEFB",
-      "Electrical Engineering": "#FFCDD2",
-      "Mechanical Engineering": "#C8E6C9"
-    },
-    logoPath: "./university_logo.png" // Optional
+    // departmentColors removed
+    logoPath: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg') // Optional - Use a valid path if needed
   };
-  
+
   // 2. Create rooms
   const rooms = [
     new Room("Room A101", 5, 6, "DE-MORGAN BLOCK FIRST FLOOR"),
     new Room("Room B202", 6, 5, "LE CORBUSIER BLOCK SECOND FLOOR")
   ];
-  
-  // 3. Create students
-  const students: Student[] = [];
-  
-  // Sample department distribution
-  const departments = ["Computer Science", "Electrical Engineering", "Mechanical Engineering"];
-  
-  // Generate sample student data
-  for (let i = 1; i <= 50; i++) {
-    const studentId = `${i}`;
-    const name = `Student ${i}`;
-    const department = departments[i % departments.length];
-    students.push(new Student(studentId, name, department));
-  }
-  
-  // 4. Generate the seating plan
-  try {
-    console.log(students);
-    
 
+  // 3. Create student groups
+  const studentGroups: StudentGroup[] = [
+    {
+      branchCode: "CS",
+      subjectCode: "CS101",
+      studentList: Array.from({ length: 25 }, (_, i) => `CS${101 + i}`) // Generate 25 CS students
+    },
+    {
+      branchCode: "EE",
+      subjectCode: "EE201",
+      studentList: Array.from({ length: 20 }, (_, i) => `EE${201 + i}`) // Generate 20 EE students
+    },
+    {
+      branchCode: "ME",
+      subjectCode: "ME301",
+      studentList: Array.from({ length: 15 }, (_, i) => `ME${301 + i}`) // Generate 15 ME students
+    }
+  ];
+
+
+  // 4. Generate the seating plan (Pass studentGroups instead of students)
+  try {
     const outputFile = await generateSeatingPlan({
       outputFile: `./SeatingPlan_${new Date().toISOString().replace(/[T:.-]/g, '').slice(0, 14)}.pdf`,
       examConfig,
-      students,
+      studentGroups, // Use the new studentGroups array
       rooms,
-      assignmentStrategy: 'byDepartment'
     });
-    
+
     console.log(`Seating plan generated successfully: ${outputFile}`);
+    return outputFile; // Return the path for the IPC handler
   } catch (err) {
     console.error('Error generating PDF:', err);
+    throw err; // Re-throw error for the IPC handler
   }
 }
 
@@ -129,8 +130,17 @@ app.on('activate', () => {
 })
 
 ipcMain.handle('generate-seating-plan', async (event, arg) => {
-  const result = exampleUsage();
-  return result;
+  // Call exampleUsage and return its result (or handle errors)
+  try {
+    // Note: In a real app, you'd likely pass 'arg' containing
+    // examConfig, studentGroups, and rooms from the renderer process
+    // instead of using the hardcoded exampleUsage.
+    const result = await exampleUsage();
+    return { success: true, path: result };
+  } catch (error: any) {
+    console.error("IPC Handler Error:", error);
+    return { success: false, error: error.message || 'Unknown error' };
+  }
 });
 
 app.whenReady().then(createWindow)

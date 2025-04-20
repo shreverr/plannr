@@ -1,24 +1,12 @@
-import { fileURLToPath } from 'url';
-import path, { dirname } from 'path';
+// import { fileURLToPath } from 'url';
+import path from 'path';
 
-// Polyfill for __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// // Polyfill for __dirname in ES modules
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = dirname(__filename);
 
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
-
-class Student {
-  id: string;
-  name: string;
-  department: string;
-
-  constructor(id: string, name: string, department: string) {
-    this.id = id;
-    this.name = name;
-    this.department = department;
-  }
-}
 
 class Room {
   name: string;
@@ -26,7 +14,7 @@ class Room {
   cols: number;
   capacity: number;
   buildingLocation: string;
-  seatingGrid: (Student | null)[][];
+  seatingGrid: (string | null)[][]; // Changed to store student IDs (string)
 
   constructor(name: string, rows: number, cols: number, buildingLocation: string = "DE-MORGAN BLOCK FIRST FLOOR") {
     this.name = name;
@@ -34,6 +22,7 @@ class Room {
     this.cols = cols;
     this.capacity = rows * cols;
     this.buildingLocation = buildingLocation;
+    // Initialize grid with nulls
     this.seatingGrid = Array(rows).fill(null).map(() => Array(cols).fill(null));
   }
 }
@@ -56,105 +45,103 @@ export interface ExamConfig {
   examTime: string;
   cloakRoom: string;
   instructions: string[];
-  departmentColors: { [key: string]: string };
+  // departmentColors: { [key: string]: string }; // Removed departmentColors
   logoPath?: string;
+}
+
+// Define the new structure for student input
+export interface StudentGroup {
+  branchCode: string; // Identifier for the group
+  subjectCode: string; // Another identifier
+  studentList: string[]; // List of student IDs
 }
 
 export interface SeatingPlanOptions {
   outputFile: string;
   examConfig: ExamConfig;
-  students: Student[];
+  studentGroups: StudentGroup[]; // Changed from students: Student[]
   rooms: Room[];
-  assignmentStrategy?: 'byDepartment' | 'random' | 'custom';
 }
 
-function assignSeatsByDepartment(students: Student[], rooms: Room[]): Room[] {
-  // Clone students array to avoid modifying the original
-  const studentsToAssign = [...students];
-  
-  // Sort students by department
-  studentsToAssign.sort((a, b) => a.department.localeCompare(b.department));
-  
-  let studentIdx = 0;
-  for (const room of rooms) {
-    for (let row = 0; row < room.rows; row++) {
-      // Alternate departments by rows
-      const departments = [...new Set(studentsToAssign.map(s => s.department))];
-      const rowDepartment = departments[row % departments.length];
-      
-      for (let col = 0; col < room.cols; col++) {
-        if (studentIdx >= studentsToAssign.length) {
-          break;
-        }
-        
-        let foundStudent = false;
-        for (let i = studentIdx; i < studentsToAssign.length; i++) {
-          if (studentsToAssign[i].department === rowDepartment) {
-            if (i !== studentIdx) {
-              // Swap students to get correct department
-              [studentsToAssign[studentIdx], studentsToAssign[i]] = [studentsToAssign[i], studentsToAssign[studentIdx]];
-            }
-            foundStudent = true;
-            break;
-          }
-        }
-        
-        if (foundStudent) {
-          room.seatingGrid[row][col] = studentsToAssign[studentIdx];
-          studentIdx++;
-        }
-      }
-    }
+// Renamed and modified function to assign seats based on StudentGroup
+function assignSeatsByGroup(studentGroups: StudentGroup[], rooms: Room[]): Room[] {
+  // Create a copy of the student lists within each group to avoid modifying the original input
+  const groupMap = new Map<number, string[]>();
+  studentGroups.forEach((group, index) => {
+    groupMap.set(index, [...group.studentList]); // Use index as key, copy student list
+  });
+
+  const groupIndices = Array.from(groupMap.keys()); // Get indices [0, 1, 2, ...]
+
+  if (groupIndices.length === 0) {
+    // No student groups, return rooms as is
+    return rooms;
   }
-  
+
+  let totalStudentsToAssign = studentGroups.reduce((sum, group) => sum + group.studentList.length, 0);
+  let studentsAssigned = 0;
+
+  // Assign students room by room
+  for (const room of rooms) {
+    // Iterate column first, then row to fill column-wise
+    for (let col = 0; col < room.cols; col++) {
+      // Determine the target group index for this column
+      const targetGroupIndex = groupIndices[col % groupIndices.length];
+      const groupStudentList = groupMap.get(targetGroupIndex);
+
+      for (let row = 0; row < room.rows; row++) {
+        // Check if there are students left for the target group
+        if (groupStudentList && groupStudentList.length > 0) {
+          // Assign the next available student ID from that group
+          const studentId = groupStudentList.shift(); // Take the first student ID
+          room.seatingGrid[row][col] = studentId!; // Assign ID string
+          studentsAssigned++;
+        } else {
+          // No more students for this group, leave the seat null
+          room.seatingGrid[row][col] = null;
+        }
+         // Optimization: Check if all students have been assigned.
+         if (studentsAssigned >= totalStudentsToAssign) {
+             // Exit inner loops if all students are seated
+             col = room.cols; // This will break the outer col loop
+             break; // Exit the row loop
+         }
+      }
+       // Optimization: Check if all students have been assigned.
+       if (studentsAssigned >= totalStudentsToAssign) {
+           break; // Exit the col loop
+       }
+    }
+     // Optimization: Check if all students have been assigned.
+     if (studentsAssigned >= totalStudentsToAssign) {
+         break; // Exit the room loop early if all students are seated
+     }
+  }
+
   return rooms;
 }
 
-function assignSeatsRandomly(students: Student[], rooms: Room[]): Room[] {
-  // Clone and shuffle students array
-  const studentsToAssign = [...students].sort(() => Math.random() - 0.5);
-  
-  let studentIdx = 0;
-  for (const room of rooms) {
-    for (let row = 0; row < room.rows; row++) {
-      for (let col = 0; col < room.cols; col++) {
-        if (studentIdx < studentsToAssign.length) {
-          room.seatingGrid[row][col] = studentsToAssign[studentIdx];
-          studentIdx++;
-        }
-      }
-    }
-  }
-  
-  return rooms;
-}
 
 /**
  * Creates a seating plan PDF based on provided options
- * 
+ *
  * @param options Configuration options for the seating plan
  * @returns Promise that resolves with the path of the created PDF file
  */
 function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
-  const { students, rooms, examConfig, assignmentStrategy = 'byDepartment' } = options;
-  
+  // Destructure studentGroups instead of students
+  const { studentGroups, rooms, examConfig } = options;
+
   // Deep cloning rooms to avoid modifying the originals
   const roomsClone = rooms.map(room => {
+    // Use the updated Room constructor
     const newRoom = new Room(room.name, room.rows, room.cols, room.buildingLocation);
     return newRoom;
   });
-  
-  // Assign seats based on selected strategy
-  let assignedRooms: Room[];
-  if (assignmentStrategy === 'byDepartment') {
-    assignedRooms = assignSeatsByDepartment([...students], roomsClone);
-  } else if (assignmentStrategy === 'random') {
-    assignedRooms = assignSeatsRandomly([...students], roomsClone);
-  } else {
-    // 'custom' strategy means rooms are already assigned
-    assignedRooms = roomsClone;
-  }
-  
+
+  // Assign seats using the new group-based strategy
+  const assignedRooms = assignSeatsByGroup(studentGroups, roomsClone);
+
   // Initialize the PDF
   const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 20 });
   
@@ -267,30 +254,28 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     for (let rowIdx = 0; rowIdx < room.rows; rowIdx++) {
       const yPos = tableStartY + (rowIdx + 1) * rowHeight;
       
-      // Get all departments for proper row coloring
-      const departments = [...new Set(students.map(s => s.department))];
-      
-      // Set background color based on department
-      const dept = departments[rowIdx % departments.length];
-      const bgColor = colors.HexColor('#FFFFFF');
-      
+      // Removed department-based row coloring logic
+      const bgColor = colors.white; // Use plain white background
+
       doc.rect(40, yPos, availableWidth, rowHeight)
          .fillColor(bgColor)
          .fill();
-      
+
       // Draw row number
       doc.fillColor(colors.black)
          .text(`${rowIdx + 1}`, 40 + 5, yPos + 7, { width: colWidth - 10, align: 'center' });
-      
-      // Draw student IDs
+
+      // Draw student IDs directly from the grid
       for (let colIdx = 0; colIdx < colCount; colIdx++) {
-        const student = colIdx < room.cols ? room.seatingGrid[rowIdx][colIdx] : null;
-        const text = student ? student.id : "---";
-        
-        doc.text(text, 40 + colWidth + (colIdx * colWidth) + 5, yPos + 7, 
+        // Get the student ID string or null from the grid
+        const studentId = colIdx < room.cols ? room.seatingGrid[rowIdx][colIdx] : null;
+        // Use the ID if present, otherwise "---"
+        const text = studentId ? studentId : "---";
+
+        doc.text(text, 40 + colWidth + (colIdx * colWidth) + 5, yPos + 7,
                 { width: colWidth - 10, align: 'center' });
       }
-      
+
       // Draw cell borders
       doc.strokeColor(colors.black);
       for (let colIdx = 0; colIdx <= colCount; colIdx++) {
@@ -323,7 +308,7 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     const summaryWidth = summaryColWidths.reduce((a, b) => a + b, 0);
     
     // Create summary table
-    const presentCount = room.seatingGrid.flat().filter(s => s).length;
+    const presentCount = room.seatingGrid.flat().filter(id => id !== null).length;
     const absentCount = room.capacity - presentCount;
     
     // Header row
@@ -335,9 +320,9 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
        .fontSize(9);  // Set font size to 9 for the summary table
     
     doc.text("Branch", 40 + 5, summaryStartY + 7, { width: summaryColWidths[0] - 10, align: 'center' });
-    doc.text("Appearing", 40 + summaryColWidths[0] + 5, summaryStartY + 7, 
+    doc.text("Appearing", 40 + summaryColWidths[0] + 5, summaryStartY + 7,
             { width: summaryColWidths[1] - 10, align: 'center' });
-    doc.text("Subject", 40 + summaryColWidths[0] + summaryColWidths[1] + 5, summaryStartY + 7, 
+    doc.text("Subject", 40 + summaryColWidths[0] + summaryColWidths[1] + 5, summaryStartY + 7,
             { width: summaryColWidths[2] - 10, align: 'center' });
     
     // Data rows
@@ -348,17 +333,17 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     doc.fillColor(colors.black);
     
     // Row 1
-    doc.text("ENROLLED", 40 + 5, summaryStartY + rowHeight + 7, 
+    doc.text("ENROLLED", 40 + 5, summaryStartY + rowHeight + 7,
             { width: summaryColWidths[0] - 10, align: 'center' });
-    doc.text(`${room.capacity}`, 40 + summaryColWidths[0] + 5, summaryStartY + rowHeight + 7, 
+    doc.text(`${room.capacity}`, 40 + summaryColWidths[0] + 5, summaryStartY + rowHeight + 7,
             { width: summaryColWidths[1] - 10, align: 'center' });
-    doc.text(`${absentCount}`, 40 + summaryColWidths[0] + summaryColWidths[1] + 5, summaryStartY + rowHeight + 7, 
+    doc.text(`${absentCount}`, 40 + summaryColWidths[0] + summaryColWidths[1] + 5, summaryStartY + rowHeight + 7,
             { width: summaryColWidths[2] - 10, align: 'center' });
     
     // Row 2
-    doc.text("APPEARED", 40 + 5, summaryStartY + rowHeight * 2 + 7, 
+    doc.text("APPEARED", 40 + 5, summaryStartY + rowHeight * 2 + 7,
             { width: summaryColWidths[0] - 10, align: 'center' });
-    doc.text(`${presentCount}`, 40 + summaryColWidths[0] + 5, summaryStartY + rowHeight * 2 + 7, 
+    doc.text(`${presentCount}`, 40 + summaryColWidths[0] + 5, summaryStartY + rowHeight * 2 + 7,
             { width: summaryColWidths[1] - 10, align: 'center' });
     
     // Draw summary table grid lines
@@ -392,13 +377,13 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     let footerY = summaryStartY + rowHeight * 3 + 30;
     
     doc.fontSize(9);
-    doc.text("UMC Roll Number (if any): _____________________________ Absent Roll Number : _____________________________ Remarks: _____________________________", 
+    doc.text("UMC Roll Number (if any): _____________________________ Absent Roll Number : _____________________________ Remarks: _____________________________",
             40, footerY);
     footerY += 20;
-    doc.text("Name of the Invigilator - 1: _____________________________ Employee Code: _____________________________ Signature: _____________________________", 
+    doc.text("Name of the Invigilator - 1: _____________________________ Employee Code: _____________________________ Signature: _____________________________",
             40, footerY);
     footerY += 15;
-    doc.text("Name of the Invigilator - 2: _____________________________ Employee Code: _____________________________ Signature: _____________________________", 
+    doc.text("Name of the Invigilator - 2: _____________________________ Employee Code: _____________________________ Signature: _____________________________",
             40, footerY);
   }
   
@@ -428,16 +413,13 @@ function getDefaultExamConfig(): ExamConfig {
       "5. No student is allowed to carry any paper/book/notes/mobile/calculator etc. inside the examination venue.",
       "6. Students must reach at least 15 minutes before the start of Examination at the respective examination venue."
     ],
-    departmentColors: {
-      "Computer Science": colors.HexColor('#BBDEFB'),
-      "Electrical Engineering": colors.HexColor('#FFCDD2')
-    }
+    // Removed departmentColors
   };
 }
 
 // Export only what's needed by other modules
 export {
-  Student,
+  // Student, // Removed Student export
   Room,
   generateSeatingPlan,
   getDefaultExamConfig

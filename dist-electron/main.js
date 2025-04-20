@@ -3,25 +3,13 @@ var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { en
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 import { app, BrowserWindow, ipcMain } from "electron";
 import { createRequire } from "node:module";
-import { fileURLToPath as fileURLToPath$1 } from "node:url";
+import { fileURLToPath } from "node:url";
 import path$1 from "node:path";
-import { fileURLToPath } from "url";
-import path, { dirname } from "path";
+import path from "path";
 import fs from "fs";
 import PDFDocument from "pdfkit";
-const __filename = fileURLToPath(import.meta.url);
-dirname(__filename);
-class Student {
-  constructor(id, name, department) {
-    __publicField(this, "id");
-    __publicField(this, "name");
-    __publicField(this, "department");
-    this.id = id;
-    this.name = name;
-    this.department = department;
-  }
-}
 class Room {
+  // Changed to store student IDs (string)
   constructor(name, rows, cols, buildingLocation = "DE-MORGAN BLOCK FIRST FLOOR") {
     __publicField(this, "name");
     __publicField(this, "rows");
@@ -39,69 +27,53 @@ class Room {
 }
 const colors = {
   black: "#000000",
-  white: "#FFFFFF",
-  HexColor: (hex) => hex
+  white: "#FFFFFF"
 };
-function assignSeatsByDepartment(students, rooms) {
-  const studentsToAssign = [...students];
-  studentsToAssign.sort((a, b) => a.department.localeCompare(b.department));
-  let studentIdx = 0;
+function assignSeatsByGroup(studentGroups, rooms) {
+  const groupMap = /* @__PURE__ */ new Map();
+  studentGroups.forEach((group, index) => {
+    groupMap.set(index, [...group.studentList]);
+  });
+  const groupIndices = Array.from(groupMap.keys());
+  if (groupIndices.length === 0) {
+    return rooms;
+  }
+  let totalStudentsToAssign = studentGroups.reduce((sum, group) => sum + group.studentList.length, 0);
+  let studentsAssigned = 0;
   for (const room of rooms) {
-    for (let row = 0; row < room.rows; row++) {
-      const departments = [...new Set(studentsToAssign.map((s) => s.department))];
-      const rowDepartment = departments[row % departments.length];
-      for (let col = 0; col < room.cols; col++) {
-        if (studentIdx >= studentsToAssign.length) {
+    for (let col = 0; col < room.cols; col++) {
+      const targetGroupIndex = groupIndices[col % groupIndices.length];
+      const groupStudentList = groupMap.get(targetGroupIndex);
+      for (let row = 0; row < room.rows; row++) {
+        if (groupStudentList && groupStudentList.length > 0) {
+          const studentId = groupStudentList.shift();
+          room.seatingGrid[row][col] = studentId;
+          studentsAssigned++;
+        } else {
+          room.seatingGrid[row][col] = null;
+        }
+        if (studentsAssigned >= totalStudentsToAssign) {
+          col = room.cols;
           break;
         }
-        let foundStudent = false;
-        for (let i = studentIdx; i < studentsToAssign.length; i++) {
-          if (studentsToAssign[i].department === rowDepartment) {
-            if (i !== studentIdx) {
-              [studentsToAssign[studentIdx], studentsToAssign[i]] = [studentsToAssign[i], studentsToAssign[studentIdx]];
-            }
-            foundStudent = true;
-            break;
-          }
-        }
-        if (foundStudent) {
-          room.seatingGrid[row][col] = studentsToAssign[studentIdx];
-          studentIdx++;
-        }
+      }
+      if (studentsAssigned >= totalStudentsToAssign) {
+        break;
       }
     }
-  }
-  return rooms;
-}
-function assignSeatsRandomly(students, rooms) {
-  const studentsToAssign = [...students].sort(() => Math.random() - 0.5);
-  let studentIdx = 0;
-  for (const room of rooms) {
-    for (let row = 0; row < room.rows; row++) {
-      for (let col = 0; col < room.cols; col++) {
-        if (studentIdx < studentsToAssign.length) {
-          room.seatingGrid[row][col] = studentsToAssign[studentIdx];
-          studentIdx++;
-        }
-      }
+    if (studentsAssigned >= totalStudentsToAssign) {
+      break;
     }
   }
   return rooms;
 }
 function generateSeatingPlan(options) {
-  const { students, rooms, examConfig, assignmentStrategy = "byDepartment" } = options;
+  const { studentGroups, rooms, examConfig } = options;
   const roomsClone = rooms.map((room) => {
     const newRoom = new Room(room.name, room.rows, room.cols, room.buildingLocation);
     return newRoom;
   });
-  let assignedRooms;
-  if (assignmentStrategy === "byDepartment") {
-    assignedRooms = assignSeatsByDepartment([...students], roomsClone);
-  } else if (assignmentStrategy === "random") {
-    assignedRooms = assignSeatsRandomly([...students], roomsClone);
-  } else {
-    assignedRooms = roomsClone;
-  }
+  const assignedRooms = assignSeatsByGroup(studentGroups, roomsClone);
   const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 20 });
   const stream = fs.createWriteStream(options.outputFile);
   doc.pipe(stream);
@@ -165,13 +137,12 @@ function generateSeatingPlan(options) {
     }
     for (let rowIdx = 0; rowIdx < room.rows; rowIdx++) {
       const yPos = tableStartY + (rowIdx + 1) * rowHeight;
-      [...new Set(students.map((s) => s.department))];
-      const bgColor = colors.HexColor("#FFFFFF");
+      const bgColor = colors.white;
       doc.rect(40, yPos, availableWidth, rowHeight).fillColor(bgColor).fill();
       doc.fillColor(colors.black).text(`${rowIdx + 1}`, 40 + 5, yPos + 7, { width: colWidth - 10, align: "center" });
       for (let colIdx = 0; colIdx < colCount; colIdx++) {
-        const student = colIdx < room.cols ? room.seatingGrid[rowIdx][colIdx] : null;
-        const text = student ? student.id : "---";
+        const studentId = colIdx < room.cols ? room.seatingGrid[rowIdx][colIdx] : null;
+        const text = studentId ? studentId : "---";
         doc.text(
           text,
           40 + colWidth + colIdx * colWidth + 5,
@@ -192,7 +163,7 @@ function generateSeatingPlan(options) {
     const summaryStartY = tableEndY + 30;
     const summaryColWidths = [120, 60, 60];
     const summaryWidth = summaryColWidths.reduce((a, b) => a + b, 0);
-    const presentCount = room.seatingGrid.flat().filter((s) => s).length;
+    const presentCount = room.seatingGrid.flat().filter((id) => id !== null).length;
     const absentCount = room.capacity - presentCount;
     doc.rect(40, summaryStartY, summaryWidth, rowHeight).fillColor(colors.white).fill();
     doc.fillColor(colors.black).fontSize(9);
@@ -280,7 +251,7 @@ function generateSeatingPlan(options) {
   });
 }
 createRequire(import.meta.url);
-const __dirname = path$1.dirname(fileURLToPath$1(import.meta.url));
+const __dirname = path$1.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path$1.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = path$1.join(process.env.APP_ROOT, "dist-electron");
@@ -300,38 +271,47 @@ async function exampleUsage() {
       "4. No student is allowed to carry any paper/book/notes/mobile/calculator inside the examination venue.",
       "5. Students must reach at least 15 minutes before the start of Examination."
     ],
-    departmentColors: {
-      "Computer Science": "#BBDEFB",
-      "Electrical Engineering": "#FFCDD2",
-      "Mechanical Engineering": "#C8E6C9"
-    },
-    logoPath: "./university_logo.png"
-    // Optional
+    // departmentColors removed
+    logoPath: path$1.join(process.env.VITE_PUBLIC, "electron-vite.svg")
+    // Optional - Use a valid path if needed
   };
   const rooms = [
     new Room("Room A101", 5, 6, "DE-MORGAN BLOCK FIRST FLOOR"),
     new Room("Room B202", 6, 5, "LE CORBUSIER BLOCK SECOND FLOOR")
   ];
-  const students = [];
-  const departments = ["Computer Science", "Electrical Engineering", "Mechanical Engineering"];
-  for (let i = 1; i <= 50; i++) {
-    const studentId = `${i}`;
-    const name = `Student ${i}`;
-    const department = departments[i % departments.length];
-    students.push(new Student(studentId, name, department));
-  }
+  const studentGroups = [
+    {
+      branchCode: "CS",
+      subjectCode: "CS101",
+      studentList: Array.from({ length: 25 }, (_, i) => `CS${101 + i}`)
+      // Generate 25 CS students
+    },
+    {
+      branchCode: "EE",
+      subjectCode: "EE201",
+      studentList: Array.from({ length: 20 }, (_, i) => `EE${201 + i}`)
+      // Generate 20 EE students
+    },
+    {
+      branchCode: "ME",
+      subjectCode: "ME301",
+      studentList: Array.from({ length: 15 }, (_, i) => `ME${301 + i}`)
+      // Generate 15 ME students
+    }
+  ];
   try {
-    console.log(students);
     const outputFile = await generateSeatingPlan({
       outputFile: `./SeatingPlan_${(/* @__PURE__ */ new Date()).toISOString().replace(/[T:.-]/g, "").slice(0, 14)}.pdf`,
       examConfig,
-      students,
-      rooms,
-      assignmentStrategy: "byDepartment"
+      studentGroups,
+      // Use the new studentGroups array
+      rooms
     });
     console.log(`Seating plan generated successfully: ${outputFile}`);
+    return outputFile;
   } catch (err) {
     console.error("Error generating PDF:", err);
+    throw err;
   }
 }
 function createWindow() {
@@ -363,8 +343,13 @@ app.on("activate", () => {
   }
 });
 ipcMain.handle("generate-seating-plan", async (event, arg) => {
-  const result = exampleUsage();
-  return result;
+  try {
+    const result = await exampleUsage();
+    return { success: true, path: result };
+  } catch (error) {
+    console.error("IPC Handler Error:", error);
+    return { success: false, error: error.message || "Unknown error" };
+  }
 });
 app.whenReady().then(createWindow);
 export {
