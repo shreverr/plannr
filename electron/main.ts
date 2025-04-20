@@ -2,8 +2,10 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-// Import StudentGroup instead of Student
-import { ExamConfig, generateSeatingPlan, Room, StudentGroup } from './generator'
+import fs from 'node:fs/promises'; // Import fs promises for async file reading
+import Papa from 'papaparse'; // Import papaparse for CSV parsing
+ // Import StudentGroup instead of Student
+ import { ExamConfig, generateSeatingPlan, Room, StudentGroup } from './generator'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -136,10 +138,77 @@ ipcMain.handle('generate-seating-plan', async (event, arg) => {
     // examConfig, studentGroups, and rooms from the renderer process
     // instead of using the hardcoded exampleUsage.
     const result = await exampleUsage();
-    return { success: true, path: result };
-  } catch (error: any) {
-    console.error("IPC Handler Error:", error);
-    return { success: false, error: error.message || 'Unknown error' };
+
+    console.log("Received data in main process:", arg);
+
+    const { examConfig, studentGroups: studentGroupsFromRenderer, rooms: roomsFromRenderer } = arg;
+
+    // 1. Process Student Groups: Read student IDs from CSV files
+    const processedStudentGroups: StudentGroup[] = [];
+    for (const group of studentGroupsFromRenderer) {
+      if (!group.csvFilePath || typeof group.csvFilePath !== 'string') {
+        console.warn(`Skipping group ${group.branchCode}-${group.subjectCode} due to missing or invalid csvFilePath.`);
+        continue;
+      }
+      try {
+        const fileContent = await fs.readFile(group.csvFilePath, 'utf8');
+        const parseResult = Papa.parse<string[]>(fileContent.trim(), {
+          header: false, // Assuming CSV has no header, just one column of IDs
+          skipEmptyLines: true,
+        });
+
+        if (parseResult.errors.length > 0) {
+          console.error(`Error parsing CSV for ${group.branchCode}-${group.subjectCode}:`, parseResult.errors);
+          throw new Error(`Failed to parse CSV: ${parseResult.errors[0].message}`);
+        }
+
+        // Extract student IDs from the first column
+        const studentList = parseResult.data.map(row => row[0]).filter(id => id); // Ensure ID is not empty
+
+        if (studentList.length === 0) {
+          console.warn(`CSV for ${group.branchCode}-${group.subjectCode} is empty or contains no valid IDs.`);
+          // Decide if an empty group should be added or skipped
+          // continue; // Option: skip empty groups
+        }
+
+        processedStudentGroups.push({
+          branchCode: group.branchCode,
+          subjectCode: group.subjectCode,
+          studentList: studentList,
+        });
+
+      } catch (readError: any) {
+        console.error(`Error reading or parsing CSV file ${group.csvFilePath}:`, readError);
+        // Decide how to handle file read errors (e.g., skip group, return error to renderer)
+        throw new Error(`Failed to process student file ${group.csvFilePath}: ${readError.message}`);
+      }
+    }
+
+    if (processedStudentGroups.length === 0) {
+      throw new Error("No valid student data could be processed from the provided files.");
+    }
+
+    // 2. Prepare Rooms (Map frontend room structure to backend Room class instances)
+    const rooms = roomsFromRenderer.map((r: any) => new Room(r.name, r.rows, r.cols, r.buildingLocation || "Default Location"));
+
+    // 3. Define Output Path
+    const timestamp = new Date().toISOString().replace(/[T:.-]/g, '').slice(0, 14);
+    const defaultDownloadsPath = app.getPath('downloads'); // Get user's downloads directory
+    const outputFile = path.join(defaultDownloadsPath, `SeatingPlan_${timestamp}.pdf`);
+
+    // 4. Generate Seating Plan
+    const resultPath = await generateSeatingPlan({
+      outputFile: outputFile,
+      examConfig,
+      studentGroups: processedStudentGroups,
+      rooms,
+    });
+
+    console.log(`Seating plan generated successfully: ${resultPath}`);
+    return { success: true, path: resultPath };
+   } catch (error: any) {
+     console.error("IPC Handler Error:", error);
+     return { success: false, error: error.message || 'Unknown error' };
   }
 });
 

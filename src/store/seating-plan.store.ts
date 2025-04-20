@@ -4,7 +4,9 @@ import { persist } from 'zustand/middleware';
 export type StudentUploadData = {
   branchCode: string;
   subjectCode: string;
-  csvFile: File | null;
+  // csvFile: File | null; // Remove non-serializable File object
+  csvFilePath: string | null; // Path for backend processing
+  csvFileName: string | null; // Store filename for display
 };
 
 export type SeatingPlanData = {
@@ -43,7 +45,9 @@ const initialSeatingPlan: SeatingPlanData = {
   studentUploads: [{
     branchCode: '',
     subjectCode: '',
-    csvFile: null
+    // csvFile: null,
+    csvFilePath: null,
+    csvFileName: null
   }]
 };
 
@@ -75,7 +79,7 @@ const useSeatingPlanStore = create<SeatingPlanStore>()(
             ...state,
             currentPlan: {
               ...initialSeatingPlan,
-              studentUploads: [{ branchCode: '', subjectCode: '', csvFile: null }]
+              studentUploads: [{ branchCode: '', subjectCode: '', csvFilePath: null, csvFileName: null }]
             }
           };
         }
@@ -84,21 +88,27 @@ const useSeatingPlanStore = create<SeatingPlanStore>()(
             ...state.currentPlan,
             studentUploads: [
               ...state.currentPlan.studentUploads,
-              { branchCode: '', subjectCode: '', csvFile: null }
+              { branchCode: '', subjectCode: '', csvFilePath: null, csvFileName: null }
             ]
           }
         };
       }),
+    // Update to handle partial updates correctly with new structure
     updateStudentUpload: (index, data) =>
       set((state) => {
         if (!state.currentPlan) return state;
+        const updatedUploads = state.currentPlan.studentUploads.map((upload, i) => {
+          if (i === index) {
+            // Merge existing upload data with the new partial data
+            return { ...upload, ...data };
+          }
+          return upload;
+        });
         return {
           currentPlan: {
             ...state.currentPlan,
-            studentUploads: state.currentPlan.studentUploads.map((upload, i) =>
-              i === index ? data : upload
-            )
-          }
+            studentUploads: updatedUploads,
+          },
         };
       }),
     deleteStudentUpload: (index) =>
