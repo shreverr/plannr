@@ -213,6 +213,6 @@ ipcMain.handle('generate-seating-plan', async (event, arg) => {
   }
 });
 
-exampleAttendanceGeneration()
+// exampleAttendanceGeneration()
 
 app.whenReady().then(createWindow)

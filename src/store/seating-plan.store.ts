@@ -4,7 +4,8 @@ import { persist } from 'zustand/middleware';
 export type StudentUploadData = {
   branchCode: string;
   subjectCode: string;
-  // csvFile: File | null; // Remove non-serializable File object
+  semester: number; // <-- Added
+  batchYear: number; // <-- Added
   csvFilePath: string | null; // Path for backend processing
   csvFileName: string | null; // Store filename for display
 };
@@ -18,6 +19,8 @@ export type SeatingPlanData = {
   mandatoryInstructions: string;
   selectedRooms: string[];
   examType: 'regular' | 'reappear';
+  examMode: 'online' | 'offline'; // <-- Added examMode
+  session: number; // <-- Added session field
   studentUploads: StudentUploadData[];
 };
 
@@ -42,10 +45,13 @@ const initialSeatingPlan: SeatingPlanData = {
   mandatoryInstructions: '',
   selectedRooms: [],
   examType: 'regular',
+  examMode: 'offline', // <-- Default to offline
+  session: 1, // <-- Default session
   studentUploads: [{
     branchCode: '',
     subjectCode: '',
-    // csvFile: null,
+    semester: 1, // <-- Default
+    batchYear: new Date().getFullYear(), // <-- Default to current year
     csvFilePath: null,
     csvFileName: null
   }]
@@ -79,7 +85,7 @@ const useSeatingPlanStore = create<SeatingPlanStore>()(
             ...state,
             currentPlan: {
               ...initialSeatingPlan,
-              studentUploads: [{ branchCode: '', subjectCode: '', csvFilePath: null, csvFileName: null }]
+              studentUploads: [{ branchCode: '', subjectCode: '', semester: 1, batchYear: new Date().getFullYear(), csvFilePath: null, csvFileName: null }]
             }
           };
         }
@@ -88,7 +94,7 @@ const useSeatingPlanStore = create<SeatingPlanStore>()(
             ...state.currentPlan,
             studentUploads: [
               ...state.currentPlan.studentUploads,
-              { branchCode: '', subjectCode: '', csvFilePath: null, csvFileName: null }
+              { branchCode: '', subjectCode: '', semester: 1, batchYear: new Date().getFullYear(), csvFilePath: null, csvFileName: null }
             ]
           }
         };

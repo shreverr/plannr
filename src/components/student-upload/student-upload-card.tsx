@@ -17,7 +17,7 @@ import { StudentUploadData } from "@/store/seating-plan.store"; // Import from s
 type StudentUploadCardProps = {
   onDelete: () => void;
   // Replace single onChange with specific handlers
-  onBranchSubjectChange: (data: Partial<Pick<StudentUploadData, 'branchCode' | 'subjectCode'>>) => void;
+  onBranchSubjectChange: (data: Partial<Pick<StudentUploadData, 'branchCode' | 'subjectCode' | 'semester' | 'batchYear'>>) => void;
   onFileChange: (file: File | null) => void;
   data: StudentUploadData;
   showDelete?: boolean;
@@ -42,6 +42,14 @@ export function StudentUploadCard({
   const handleSubjectCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Call the specific handler for branch/subject changes
     onBranchSubjectChange({ subjectCode: e.target.value });
+  };
+
+  const handleSemesterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onBranchSubjectChange({ semester: Number(e.target.value) });
+  };
+
+  const handleBatchYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onBranchSubjectChange({ batchYear: Number(e.target.value) });
   };
 
   const handleFileSelect = (file: File | null) => {
@@ -81,6 +89,30 @@ export function StudentUploadCard({
               value={data.subjectCode}
               onChange={handleSubjectCodeChange}
               disabled={disabled} // Disable input
+            />
+          </div>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 mt-4">
+          <div className="space-y-2">
+            <Label htmlFor={`semester-${data.branchCode}-${data.subjectCode}`}>Semester</Label>
+            <Input
+              id={`semester-${data.branchCode}-${data.subjectCode}`}
+              type="number"
+              min={1}
+              value={data.semester}
+              onChange={handleSemesterChange}
+              disabled={disabled}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`batchYear-${data.branchCode}-${data.subjectCode}`}>Batch Year</Label>
+            <Input
+              id={`batchYear-${data.branchCode}-${data.subjectCode}`}
+              type="number"
+              min={2000}
+              value={data.batchYear}
+              onChange={handleBatchYearChange}
+              disabled={disabled}
             />
           </div>
         </div>

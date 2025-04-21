@@ -39,6 +39,10 @@ const formSchema = z.object({
   examType: z.enum(["regular", "reappear"], {
     required_error: "Please select an exam type",
   }),
+  examMode: z.enum(["online", "offline"], {
+    required_error: "Please select an exam mode",
+  }),
+  session: z.coerce.number().min(1, { message: "Session is required and must be a number" }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -66,6 +70,8 @@ function NewSeatingPlan() {
       cloakRoomVenue: currentPlan?.cloakRoomVenue || "",
       mandatoryInstructions: currentPlan?.mandatoryInstructions || "",
       examType: currentPlan?.examType || "regular",
+      examMode: currentPlan?.examMode || "offline",
+      session: currentPlan?.session || 1,
       selectedRooms: currentPlan?.selectedRooms || [],
     },
   });
@@ -81,11 +87,13 @@ function NewSeatingPlan() {
         cloakRoomVenue: currentPlan.cloakRoomVenue,
         mandatoryInstructions: currentPlan.mandatoryInstructions,
         examType: currentPlan.examType,
+        examMode: currentPlan.examMode,
+        session: currentPlan.session,
         selectedRooms: currentPlan.selectedRooms,
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPlan?.studentUploads, currentPlan?.examinationName, currentPlan?.date, currentPlan?.fromTime, currentPlan?.toTime, currentPlan?.cloakRoomVenue, currentPlan?.mandatoryInstructions, currentPlan?.examType, currentPlan?.selectedRooms, form.reset]);
+  }, [currentPlan?.studentUploads, currentPlan?.examinationName, currentPlan?.date, currentPlan?.fromTime, currentPlan?.toTime, currentPlan?.cloakRoomVenue, currentPlan?.mandatoryInstructions, currentPlan?.examType, currentPlan?.examMode, currentPlan?.selectedRooms, form.reset]);
 
   // Removed useEffect that watched form changes to update currentPlan continuously
   // The form state managed by react-hook-form is the source of truth for submission.
@@ -128,6 +136,7 @@ function NewSeatingPlan() {
       // Split instructions by newline, trim whitespace, and filter empty lines
       instructions: data.mandatoryInstructions.split('\n').map(line => line.trim()).filter(line => line.length > 0),
       // logoPath: // Optional: Get path from config or leave undefined
+      examMode: data.examMode, // Pass examMode to backend if needed
     };
 
     // 2. Prepare StudentGroups (using file paths)
@@ -200,28 +209,45 @@ function NewSeatingPlan() {
 
   // Update to handle partial updates for branch/subject
   const handleUploadChange = (index: number, data: Partial<Pick<StudentUploadData, 'branchCode' | 'subjectCode'>>) => {
-    updateStudentUpload(index, data);
+    // Merge with existing upload to satisfy type
+    if (!currentPlan) return;
+    const existing = currentPlan.studentUploads[index];
+    updateStudentUpload(index, {
+      branchCode: data.branchCode ?? existing.branchCode,
+      subjectCode: data.subjectCode ?? existing.subjectCode,
+      csvFilePath: existing.csvFilePath,
+      csvFileName: existing.csvFileName,
+    });
   };
 
   // Handle file selection and store the path
   const handleFileChange = (index: number, file: File | null) => {
+    if (!currentPlan) return;
+    const existing = currentPlan.studentUploads[index];
     if (file) {
-      // IMPORTANT: Accessing file.path is specific to Electron.
-      const filePath = (file as any).path; // Cast to access 'path'
+      const filePath = (file as any).path;
       if (filePath && typeof filePath === 'string') {
-        console.log(`File selected for index ${index}:`, filePath);
-        // Store path and name, remove File object
-        updateStudentUpload(index, { csvFilePath: filePath, csvFileName: file.name });
+        updateStudentUpload(index, {
+          branchCode: existing.branchCode,
+          subjectCode: existing.subjectCode,
+          csvFilePath: filePath,
+          csvFileName: file.name,
+        });
       } else {
-         console.error("Could not get file path for index", index, file);
-         toast.error("Could not get file path. Ensure you are running in Electron and the file exists.");
-         // Clear path and name if path is invalid
-         updateStudentUpload(index, { csvFilePath: null, csvFileName: null });
+        updateStudentUpload(index, {
+          branchCode: existing.branchCode,
+          subjectCode: existing.subjectCode,
+          csvFilePath: null,
+          csvFileName: null,
+        });
       }
     } else {
-      console.log(`File removed for index ${index}`);
-      // Clear path and name if file removed
-      updateStudentUpload(index, { csvFilePath: null, csvFileName: null });
+      updateStudentUpload(index, {
+        branchCode: existing.branchCode,
+        subjectCode: existing.subjectCode,
+        csvFilePath: null,
+        csvFileName: null,
+      });
     }
   };
 
@@ -240,28 +266,51 @@ function NewSeatingPlan() {
         <form onSubmit={form.handleSubmit(onSubmit, onValidationError)} className="space-y-6">
           {/* Restore fieldset */}
           <fieldset disabled={isGenerating} className="space-y-6">
-            {/* Exam Type */}
-            <FormField
-              control={form.control}
-              name="examType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Exam Type</FormLabel>
-                  <FormControl>
-                    <ToggleGroup
-                      type="single"
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      variant="outline"
-                    >
-                      <ToggleGroupItem value="regular">Regular</ToggleGroupItem>
-                      <ToggleGroupItem value="reappear">Reappear</ToggleGroupItem>
-                    </ToggleGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Exam Type and Mode */}
+            <div className="flex flex-wrap gap-6 items-end">
+              <FormField
+                control={form.control}
+                name="examType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Exam Type</FormLabel>
+                    <FormControl>
+                      <ToggleGroup
+                        type="single"
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        variant="outline"
+                      >
+                        <ToggleGroupItem value="regular">Regular</ToggleGroupItem>
+                        <ToggleGroupItem value="reappear">Reappear</ToggleGroupItem>
+                      </ToggleGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="examMode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Exam Mode</FormLabel>
+                    <FormControl>
+                      <ToggleGroup
+                        type="single"
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        variant="outline"
+                      >
+                        <ToggleGroupItem value="offline">Offline</ToggleGroupItem>
+                        <ToggleGroupItem value="online">Online</ToggleGroupItem>
+                      </ToggleGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Examination Name */}
             <FormField
@@ -364,6 +413,20 @@ function NewSeatingPlan() {
             {/* Room Selection - RoomSelectionTable handles its own FormField integration */}
             <RoomSelectionTable />
 
+            {/* Session Number */}
+            <FormField
+              control={form.control}
+              name="session"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Session</FormLabel>
+                  <FormControl>
+                    <Input type="number" min={1} step={1} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Student Upload Cards */}
             <div className="space-y-4">
