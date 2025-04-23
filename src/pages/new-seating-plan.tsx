@@ -182,10 +182,12 @@ function NewSeatingPlan() {
 
       if (result.success) {
         toast.success(`Seating plan generated successfully: ${result.path}`);
+        alert(`Attendance sheet saved to: ${result.path}`);
         // Optionally open the file or show a link
         // Example: window.ipcRenderer.send('open-file', result.path);
       } else {
         toast.error(`Error generating seating plan: ${result.error}`);
+        alert(`Error generating seating plan: ${result.error}`);
       }
     } catch (error: any) {
       console.error("IPC Error:", error);

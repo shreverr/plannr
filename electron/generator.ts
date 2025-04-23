@@ -237,25 +237,45 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     const rowHeight = 15;
     
     // Draw table header
-    doc.rect(40, tableStartY, availableWidth, rowHeight)
+    doc.rect(40, tableStartY, availableWidth, rowHeight * 2) // Double height for column numbers and branch code
        .fill(colors.white);
     
     // Table header text
     doc.fillColor(colors.black);
     
-    // Draw S.No. cell
-    doc.text("S.No.", 40 + 5, tableStartY + 7, { width: colWidth - 10, align: 'center' });
+    // First row: S.No. and Column numbers
+    doc.font('Helvetica-Bold')  // Use regular font for first row
+       .text("S.No.", 40 + 5, tableStartY + 7, { width: colWidth - 10, align: 'center' });
     
-    // Draw column headers
+    // Draw column numbers
     for (let col = 0; col < colCount; col++) {
-      doc.text(`Col ${col + 1}`, 40 + colWidth + (col * colWidth) + 5, tableStartY + 7, 
+      doc.text(`Col ${col + 1}`, 
+              40 + colWidth + (col * colWidth) + 5, 
+              tableStartY + 7,
+              { width: colWidth - 10, align: 'center' });
+    }
+
+    // Draw horizontal line between rows
+    doc.moveTo(40, tableStartY + rowHeight)
+       .lineTo(40 + availableWidth, tableStartY + rowHeight)
+       .stroke();
+    
+    // Second row: Branch codes
+    doc.font('Helvetica-Bold'); // Switch to bold for branch codes
+    for (let col = 0; col < colCount; col++) {
+      const targetGroupIndex = col % studentGroups.length;
+      const group = studentGroups[targetGroupIndex];
+      
+      doc.text(group.branchCode, 
+              40 + colWidth + (col * colWidth) + 5, 
+              tableStartY + rowHeight + 7,
               { width: colWidth - 10, align: 'center' });
     }
     
-    // Draw table data rows
+    // Adjust table data rows to start after double-height header
     for (let rowIdx = 0; rowIdx < room.rows; rowIdx++) {
-      const yPos = tableStartY + (rowIdx + 1) * rowHeight;
-      
+      const yPos = tableStartY + (rowIdx + 2) * rowHeight; // Add 2 to account for double-height header
+    
       // Removed department-based row coloring logic
       const bgColor = colors.white; // Use plain white background
 
@@ -294,19 +314,19 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     }
     
     // Bottom line of the table
-    const tableEndY = tableStartY + (room.rows + 1) * rowHeight;
+    const tableEndY = tableStartY + (room.rows + 2) * rowHeight; // Adjusted for double-height header
     doc.moveTo(40, tableEndY)
        .lineTo(40 + availableWidth, tableEndY)
        .stroke();
     
     // Draw outline around the entire table
-    doc.rect(40, tableStartY, availableWidth, (room.rows + 1) * rowHeight)
+    doc.rect(40, tableStartY, availableWidth, (room.rows + 2) * rowHeight) // Adjusted for double-height header
        .lineWidth(1)
        .stroke();
     
     // Summary table
-    const summaryStartY = tableEndY + 30;
-    const summaryColWidths = [120, 60, 120]; // Adjusted last column width for subject code
+    const summaryStartY = tableEndY + 20; // Reduced spacing from 30 to 20
+    const summaryColWidths = [80, 50, 80]; // Reduced column widths from [120, 60, 120]
     const summaryWidth = summaryColWidths.reduce((a, b) => a + b, 0);
     
     // Create summary table - now for each student group
@@ -318,13 +338,13 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
        .fill();
     
     doc.fillColor(colors.black)
-       .fontSize(9);
+       .fontSize(8); // Reduced font size from 9 to 8
     
-    doc.text("Branch", 40 + 5, currentY + 7, { width: summaryColWidths[0] - 10, align: 'center' });
-    doc.text("Appearing", 40 + summaryColWidths[0] + 5, currentY + 7,
-            { width: summaryColWidths[1] - 10, align: 'center' });
-    doc.text("Subject Code", 40 + summaryColWidths[0] + summaryColWidths[1] + 5, currentY + 7,
-            { width: summaryColWidths[2] - 10, align: 'center' });
+    doc.text("Branch", 40 + 2, currentY + 7, { width: summaryColWidths[0] - 4, align: 'center' });
+    doc.text("Appearing", 40 + summaryColWidths[0] + 2, currentY + 7,
+            { width: summaryColWidths[1] - 4, align: 'center' });
+    doc.text("Subject", 40 + summaryColWidths[0] + summaryColWidths[1] + 2, currentY + 7, // Changed "Subject Code" to "Subject"
+            { width: summaryColWidths[2] - 4, align: 'center' });
     
     currentY += rowHeight;
     
@@ -340,12 +360,12 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
         const groupAppearances = room.seatingGrid.flat()
             .filter(id => id !== null && group.studentList.includes(id)).length;
         
-        doc.text(group.branchCode, 40 + 5, currentY + 7,
-                { width: summaryColWidths[0] - 10, align: 'center' });
-        doc.text(`${groupAppearances}`, 40 + summaryColWidths[0] + 5, currentY + 7,
-                { width: summaryColWidths[1] - 10, align: 'center' });
-        doc.text(group.subjectCode, 40 + summaryColWidths[0] + summaryColWidths[1] + 5, currentY + 7,
-                { width: summaryColWidths[2] - 10, align: 'center' });
+        doc.text(group.branchCode, 40 + 2, currentY + 7,
+                { width: summaryColWidths[0] - 4, align: 'center' });
+        doc.text(`${groupAppearances}`, 40 + summaryColWidths[0] + 2, currentY + 7,
+                { width: summaryColWidths[1] - 4, align: 'center' });
+        doc.text(group.subjectCode, 40 + summaryColWidths[0] + summaryColWidths[1] + 2, currentY + 7,
+                { width: summaryColWidths[2] - 4, align: 'center' });
         
         currentY += rowHeight;
     }
@@ -359,12 +379,12 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     
     const totalPresent = room.seatingGrid.flat().filter(id => id !== null).length;
     
-    doc.text("Total", 40 + 5, currentY + 7,
-            { width: summaryColWidths[0] - 10, align: 'center' });
-    doc.text(`${totalPresent}`, 40 + summaryColWidths[0] + 5, currentY + 7,
-            { width: summaryColWidths[1] - 10, align: 'center' });
-    doc.text("", 40 + summaryColWidths[0] + summaryColWidths[1] + 5, currentY + 7,
-            { width: summaryColWidths[2] - 10, align: 'center' });
+    doc.text("Total", 40 + 2, currentY + 7,
+            { width: summaryColWidths[0] - 4, align: 'center' });
+    doc.text(`${totalPresent}`, 40 + summaryColWidths[0] + 2, currentY + 7,
+            { width: summaryColWidths[1] - 4, align: 'center' });
+    doc.text("", 40 + summaryColWidths[0] + summaryColWidths[1] + 2, currentY + 7,
+            { width: summaryColWidths[2] - 4, align: 'center' });
     
     // Draw grid lines for the table
     doc.strokeColor(colors.black);
@@ -388,7 +408,7 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     }
     
     // Footer with signature lines
-    let footerY = currentY + rowHeight + 30;
+    let footerY = currentY + rowHeight + 25; // Reduced spacing from 30 to 25
     
     doc.fontSize(9);
     doc.text("UMC Roll Number (if any): _____________________________ Absent Roll Number : _____________________________ Remarks: _____________________________",

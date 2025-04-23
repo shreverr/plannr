@@ -1441,9 +1441,9 @@ function generateSeatingPlan(options) {
     const colWidth = availableWidth / (colCount + 1);
     let tableStartY = startY + 30;
     const rowHeight = 15;
-    doc.rect(40, tableStartY, availableWidth, rowHeight).fill(colors.white);
+    doc.rect(40, tableStartY, availableWidth, rowHeight * 2).fill(colors.white);
     doc.fillColor(colors.black);
-    doc.text("S.No.", 40 + 5, tableStartY + 7, { width: colWidth - 10, align: "center" });
+    doc.font("Helvetica-Bold").text("S.No.", 40 + 5, tableStartY + 7, { width: colWidth - 10, align: "center" });
     for (let col = 0; col < colCount; col++) {
       doc.text(
         `Col ${col + 1}`,
@@ -1452,8 +1452,20 @@ function generateSeatingPlan(options) {
         { width: colWidth - 10, align: "center" }
       );
     }
+    doc.moveTo(40, tableStartY + rowHeight).lineTo(40 + availableWidth, tableStartY + rowHeight).stroke();
+    doc.font("Helvetica-Bold");
+    for (let col = 0; col < colCount; col++) {
+      const targetGroupIndex = col % studentGroups.length;
+      const group = studentGroups[targetGroupIndex];
+      doc.text(
+        group.branchCode,
+        40 + colWidth + col * colWidth + 5,
+        tableStartY + rowHeight + 7,
+        { width: colWidth - 10, align: "center" }
+      );
+    }
     for (let rowIdx = 0; rowIdx < room.rows; rowIdx++) {
-      const yPos = tableStartY + (rowIdx + 1) * rowHeight;
+      const yPos = tableStartY + (rowIdx + 2) * rowHeight;
       const bgColor = colors.white;
       doc.rect(40, yPos, availableWidth, rowHeight).fillColor(bgColor).fill();
       doc.fillColor(colors.black).text(`${rowIdx + 1}`, 40 + 5, yPos + 7, { width: colWidth - 10, align: "center" });
@@ -1474,27 +1486,28 @@ function generateSeatingPlan(options) {
       }
       doc.moveTo(40, yPos).lineTo(40 + availableWidth, yPos).stroke();
     }
-    const tableEndY = tableStartY + (room.rows + 1) * rowHeight;
+    const tableEndY = tableStartY + (room.rows + 2) * rowHeight;
     doc.moveTo(40, tableEndY).lineTo(40 + availableWidth, tableEndY).stroke();
-    doc.rect(40, tableStartY, availableWidth, (room.rows + 1) * rowHeight).lineWidth(1).stroke();
-    const summaryStartY = tableEndY + 30;
-    const summaryColWidths = [120, 60, 120];
+    doc.rect(40, tableStartY, availableWidth, (room.rows + 2) * rowHeight).lineWidth(1).stroke();
+    const summaryStartY = tableEndY + 20;
+    const summaryColWidths = [80, 50, 80];
     const summaryWidth = summaryColWidths.reduce((a, b) => a + b, 0);
     let currentY = summaryStartY;
     doc.rect(40, currentY, summaryWidth, rowHeight).fillColor(colors.white).fill();
-    doc.fillColor(colors.black).fontSize(9);
-    doc.text("Branch", 40 + 5, currentY + 7, { width: summaryColWidths[0] - 10, align: "center" });
+    doc.fillColor(colors.black).fontSize(8);
+    doc.text("Branch", 40 + 2, currentY + 7, { width: summaryColWidths[0] - 4, align: "center" });
     doc.text(
       "Appearing",
-      40 + summaryColWidths[0] + 5,
+      40 + summaryColWidths[0] + 2,
       currentY + 7,
-      { width: summaryColWidths[1] - 10, align: "center" }
+      { width: summaryColWidths[1] - 4, align: "center" }
     );
     doc.text(
-      "Subject Code",
-      40 + summaryColWidths[0] + summaryColWidths[1] + 5,
+      "Subject",
+      40 + summaryColWidths[0] + summaryColWidths[1] + 2,
       currentY + 7,
-      { width: summaryColWidths[2] - 10, align: "center" }
+      // Changed "Subject Code" to "Subject"
+      { width: summaryColWidths[2] - 4, align: "center" }
     );
     currentY += rowHeight;
     for (const group of studentGroups) {
@@ -1503,21 +1516,21 @@ function generateSeatingPlan(options) {
       const groupAppearances = room.seatingGrid.flat().filter((id) => id !== null && group.studentList.includes(id)).length;
       doc.text(
         group.branchCode,
-        40 + 5,
+        40 + 2,
         currentY + 7,
-        { width: summaryColWidths[0] - 10, align: "center" }
+        { width: summaryColWidths[0] - 4, align: "center" }
       );
       doc.text(
         `${groupAppearances}`,
-        40 + summaryColWidths[0] + 5,
+        40 + summaryColWidths[0] + 2,
         currentY + 7,
-        { width: summaryColWidths[1] - 10, align: "center" }
+        { width: summaryColWidths[1] - 4, align: "center" }
       );
       doc.text(
         group.subjectCode,
-        40 + summaryColWidths[0] + summaryColWidths[1] + 5,
+        40 + summaryColWidths[0] + summaryColWidths[1] + 2,
         currentY + 7,
-        { width: summaryColWidths[2] - 10, align: "center" }
+        { width: summaryColWidths[2] - 4, align: "center" }
       );
       currentY += rowHeight;
     }
@@ -1526,21 +1539,21 @@ function generateSeatingPlan(options) {
     const totalPresent = room.seatingGrid.flat().filter((id) => id !== null).length;
     doc.text(
       "Total",
-      40 + 5,
+      40 + 2,
       currentY + 7,
-      { width: summaryColWidths[0] - 10, align: "center" }
+      { width: summaryColWidths[0] - 4, align: "center" }
     );
     doc.text(
       `${totalPresent}`,
-      40 + summaryColWidths[0] + 5,
+      40 + summaryColWidths[0] + 2,
       currentY + 7,
-      { width: summaryColWidths[1] - 10, align: "center" }
+      { width: summaryColWidths[1] - 4, align: "center" }
     );
     doc.text(
       "",
-      40 + summaryColWidths[0] + summaryColWidths[1] + 5,
+      40 + summaryColWidths[0] + summaryColWidths[1] + 2,
       currentY + 7,
-      { width: summaryColWidths[2] - 10, align: "center" }
+      { width: summaryColWidths[2] - 4, align: "center" }
     );
     doc.strokeColor(colors.black);
     let xPos = 40;
@@ -1553,7 +1566,7 @@ function generateSeatingPlan(options) {
     for (let y = summaryStartY; y <= currentY + rowHeight; y += rowHeight) {
       doc.moveTo(40, y).lineTo(40 + summaryWidth, y).stroke();
     }
-    let footerY = currentY + rowHeight + 30;
+    let footerY = currentY + rowHeight + 25;
     doc.fontSize(9);
     doc.text(
       "UMC Roll Number (if any): _____________________________ Absent Roll Number : _____________________________ Remarks: _____________________________",
