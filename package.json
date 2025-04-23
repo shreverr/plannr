@@ -1,13 +1,18 @@
 {
+  "productName": "Plannr",
   "name": "plannr",
-  "private": true,
-  "version": "0.0.0",
+  "private": false,
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
+  },
+  "author": {
+    "email": "verma207s@gmail.com",
+    "name": "Shreshth Verma"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

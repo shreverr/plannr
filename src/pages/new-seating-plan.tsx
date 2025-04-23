@@ -462,7 +462,7 @@ function NewSeatingPlan() {
             {/* Student Upload Cards */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <Label>Student Information (Upload CSV with one column of Student IDs)</Label>
+                <Label>Student Information (Upload CSV Student ID, Name [No Header])</Label>
                 <Button
                   type="button"
                   variant="outline"

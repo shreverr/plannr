@@ -1,12 +1,19 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { RouterProvider, createRouter, createHashHistory } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { ThemeProvider } from "@/components/theme-provider"
 import { RootLayout } from "@/components/layout/root-layout"
 import "./App.css";
-// Create a new router instance
-const router = createRouter({ routeTree });
+
+// Create a hash history instance
+const hashHistory = createHashHistory()
+
+// Create a new router instance with hash history
+const router = createRouter({ 
+  routeTree,
+  history: hashHistory
+});
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {

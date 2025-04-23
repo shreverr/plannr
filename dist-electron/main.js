@@ -1029,7 +1029,7 @@ process.env.VITE_PUBLIC = Te ? de.join(process.env.APP_ROOT, "public") : We;
 let ye;
 function Ue() {
   ye = new Fe({
-    icon: de.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: de.join(process.env.VITE_PUBLIC, "logo.png"),
     autoHideMenuBar: !0,
     webPreferences: {
       preload: de.join(He, "preload.mjs")

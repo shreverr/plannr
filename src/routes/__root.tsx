@@ -8,4 +8,7 @@ export const Route = createRootRoute({
       <TanStackRouterDevtools />
     </>
   ),
+  // notFoundComponent: () => {
+  //   throw redirect({ to: '/' })
+  // }
 })

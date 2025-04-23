@@ -69,7 +69,7 @@ function RoomsManagement() {
               key={importRooms.length > 0 ? 'uploading' : 'cleared'}
             />
             <div className="text-sm text-muted-foreground">
-              CSV format: Room Name, Rows, Columns
+              CSV format: Room Name, Rows, Columns [No Header]
             </div>
           </div>
         </CardContent>
