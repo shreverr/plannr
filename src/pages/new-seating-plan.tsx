@@ -241,16 +241,16 @@ function NewSeatingPlan() {
     }
   };
 
-  // Update to handle partial updates for branch/subject
-  const handleUploadChange = (index: number, data: Partial<Pick<StudentUploadData, 'branchCode' | 'subjectCode'>>) => {
+  // Update to handle partial updates for branch/subject and other fields
+  const handleUploadChange = (index: number, data: Partial<Pick<StudentUploadData, 'branchCode' | 'subjectCode' | 'semester' | 'batchYear'>>) => {
     // Merge with existing upload to satisfy type
     if (!currentPlan) return;
     const existing = currentPlan.studentUploads[index];
     updateStudentUpload(index, {
       branchCode: data.branchCode ?? existing.branchCode,
       subjectCode: data.subjectCode ?? existing.subjectCode,
-      semester: existing.semester,
-      batchYear: existing.batchYear,
+      semester: data.semester ?? existing.semester,
+      batchYear: data.batchYear ?? existing.batchYear,
       csvFilePath: existing.csvFilePath,
       csvFileName: existing.csvFileName,
     });
