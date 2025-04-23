@@ -76,7 +76,8 @@ export function StudentUploadCard({
         csvFilePath: data.csvFilePath, // Send the path
         mode: currentPlan?.examMode,
         examType: currentPlan?.examType,
-        session: currentPlan?.session
+        session: currentPlan?.session,
+        date: currentPlan?.date
         // Add other relevant data if needed by the main process
         // e.g., exam details if they aren't globally available in main.ts
       });

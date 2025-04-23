@@ -1921,7 +1921,7 @@ ipcMain.handle("generate-attendance-sheet", async (event, arg) => {
       noteLines: [
         "1. Centre Superintendents are requested to send this slip to the Assistant Registrar (Examinations) securely put inside the packet along with the answer-books\n2. Please ensure that the memo is not sent separately in any case."
       ],
-      dateAndSession: `${(/* @__PURE__ */ new Date()).toLocaleDateString()} (Session-${arg.session})`,
+      dateAndSession: `${arg.date} (Session-${arg.session})`,
       // Placeholder
       subject: `${subjectCode} - ${branchCode}`,
       // Use provided codes

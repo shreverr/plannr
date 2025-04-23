@@ -13,7 +13,7 @@ import { StudentUploadCard } from "@/components/student-upload/student-upload-ca
 import { Plus } from "lucide-react";
 import useSeatingPlanStore, { StudentUploadData } from "@/store/seating-plan.store"; // Import StudentUploadData type
 import useRoomStore from "@/store/rooms.store"; // Import room store
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 // import { SeatingPlanPreview } from "@/components/seating-plan/seating-plan-preview"; // Remove preview import
 import { toast } from "sonner"; // Import toast for feedback
 
@@ -48,20 +48,12 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 function NewSeatingPlan() {
-  // Remove the initial useEffect calling generateSeatingP
-  // useEffect(() => {
-  //   window.ipcRenderer.generateSeatingP({}).then((response: any) => {
-  //   });
-  // }, []);
-
   const { currentPlan, addStudentUpload, updateStudentUpload, deleteStudentUpload, setCurrentPlan } = useSeatingPlanStore();
-  const { rooms: availableRooms } = useRoomStore(); // Get available rooms from store
-  // const [previewOpen, setPreviewOpen] = useState(false); // Remove preview state
-  const [isGenerating, setIsGenerating] = useState(false); // State for loading indicator
+  const { rooms: availableRooms } = useRoomStore();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    // Initialize form with currentPlan data or defaults
     defaultValues: {
       examinationName: currentPlan?.examinationName || "",
       date: currentPlan?.date || "",
@@ -76,14 +68,33 @@ function NewSeatingPlan() {
     },
   });
 
-  // Effect to update form when currentPlan changes (e.g., adding/removing uploads)
+  // Update store when form values change
+  const updateStore = useCallback((name: keyof FormValues, value: any) => {
+    if (!currentPlan) return;
+
+    console.log(currentPlan);
+    
+    
+    setCurrentPlan({
+      ...currentPlan,
+      [name]: value
+    });
+  }, [currentPlan, setCurrentPlan]);
+
+  // Create field change handler
+  const handleFieldChange = useCallback((name: keyof FormValues, value: any) => {
+    form.setValue(name, value);
+    updateStore(name, value);
+  }, [form, updateStore]);
+
+  // Effect to update form when currentPlan changes
   useEffect(() => {
     if (currentPlan) {
-      form.reset({ // Use reset to update the entire form state
+      form.reset({
         examinationName: currentPlan.examinationName,
         date: currentPlan.date,
-        fromTime: new Date(currentPlan.fromTime), // Ensure Date objects
-        toTime: new Date(currentPlan.toTime),     // Ensure Date objects
+        fromTime: new Date(currentPlan.fromTime),
+        toTime: new Date(currentPlan.toTime),
         cloakRoomVenue: currentPlan.cloakRoomVenue,
         mandatoryInstructions: currentPlan.mandatoryInstructions,
         examType: currentPlan.examType,
@@ -92,30 +103,9 @@ function NewSeatingPlan() {
         selectedRooms: currentPlan.selectedRooms,
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPlan?.studentUploads, currentPlan?.examinationName, currentPlan?.date, currentPlan?.fromTime, currentPlan?.toTime, currentPlan?.cloakRoomVenue, currentPlan?.mandatoryInstructions, currentPlan?.examType, currentPlan?.examMode, currentPlan?.selectedRooms, form.reset]);
+  }, [currentPlan?.studentUploads, form.reset]);
 
-  // REMOVE THIS EFFECT to prevent the infinite loop
-  useEffect(() => {
-    const subscription = form.watch((values) => {
-      const existingUploads = currentPlan?.studentUploads || [];
-      setCurrentPlan({
-        examinationName: values.examinationName || "",
-        date: values.date || "",
-        examType: values.examType || "regular",
-        examMode: values.examMode || "offline",
-        session: values.session || 1,
-        selectedRooms: values.selectedRooms || [],
-        fromTime: values.fromTime || new Date(), 
-        toTime: values.toTime || new Date(), 
-        studentUploads: existingUploads,
-        cloakRoomVenue: values.cloakRoomVenue || "",
-        mandatoryInstructions: values.mandatoryInstructions || "",
-      });
-    });
-    return () => subscription.unsubscribe();
-  }, [form, setCurrentPlan, currentPlan?.studentUploads]);
-
+  // Remove the problematic useEffect that was causing infinite loops
 
   // The form state managed by react-hook-form is the source of truth for submission.
   // currentPlan is primarily used for initialization and managing studentUploads array.
@@ -291,9 +281,7 @@ function NewSeatingPlan() {
         {/* Pass isGenerating to disable form during generation */}
         {/* Add the onValidationError handler to handleSubmit */}
         <form onSubmit={form.handleSubmit(onSubmit, onValidationError)} className="space-y-6">
-          {/* Restore fieldset */}
           <fieldset disabled={isGenerating} className="space-y-6">
-            {/* Exam Type and Mode */}
             <div className="flex flex-wrap gap-6 items-end">
               <FormField
                 control={form.control}
@@ -305,7 +293,7 @@ function NewSeatingPlan() {
                       <ToggleGroup
                         type="single"
                         value={field.value}
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => handleFieldChange("examType", value)}
                         variant="outline"
                       >
                         <ToggleGroupItem value="regular">Regular</ToggleGroupItem>
@@ -326,7 +314,7 @@ function NewSeatingPlan() {
                       <ToggleGroup
                         type="single"
                         value={field.value}
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => handleFieldChange("examMode", value)}
                         variant="outline"
                       >
                         <ToggleGroupItem value="offline">Offline</ToggleGroupItem>
@@ -339,7 +327,6 @@ function NewSeatingPlan() {
               />
             </div>
 
-            {/* Examination Name */}
             <FormField
               control={form.control}
               name="examinationName"
@@ -347,16 +334,18 @@ function NewSeatingPlan() {
                 <FormItem>
                   <FormLabel>Examination Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Mid Term Examination - Spring 2024" {...field} />
+                    <Input 
+                      {...field} 
+                      onChange={(e) => handleFieldChange("examinationName", e.target.value)}
+                      placeholder="e.g. Mid Term Examination - Spring 2024" 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Date and Time */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              {/* Date */}
               <FormField
                 control={form.control}
                 name="date"
@@ -364,13 +353,16 @@ function NewSeatingPlan() {
                   <FormItem>
                     <FormLabel>Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        onChange={(e) => handleFieldChange("date", e.target.value)}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              {/* From Time */}
               <FormField
                 control={form.control}
                 name="fromTime"
@@ -378,13 +370,15 @@ function NewSeatingPlan() {
                   <FormItem>
                     <FormLabel>From Time</FormLabel>
                     <FormControl>
-                      <TimePicker12Demo date={field.value} setDate={field.onChange} />
+                      <TimePicker12Demo 
+                        date={field.value} 
+                        setDate={(date) => handleFieldChange("fromTime", date)} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              {/* To Time */}
               <FormField
                 control={form.control}
                 name="toTime"
@@ -392,7 +386,10 @@ function NewSeatingPlan() {
                   <FormItem>
                     <FormLabel>To Time</FormLabel>
                     <FormControl>
-                      <TimePicker12Demo date={field.value} setDate={field.onChange} />
+                      <TimePicker12Demo 
+                        date={field.value} 
+                        setDate={(date) => handleFieldChange("toTime", date)} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -400,7 +397,6 @@ function NewSeatingPlan() {
               />
             </div>
 
-            {/* Cloak Room Venue */}
             <FormField
               control={form.control}
               name="cloakRoomVenue"
@@ -408,14 +404,17 @@ function NewSeatingPlan() {
                 <FormItem>
                   <FormLabel>Cloak Room Venue</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Room G-05, Academic Block" {...field} />
+                    <Input 
+                      {...field} 
+                      onChange={(e) => handleFieldChange("cloakRoomVenue", e.target.value)}
+                      placeholder="e.g. Room G-05, Academic Block" 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Mandatory Instructions */}
             <FormField
               control={form.control}
               name="mandatoryInstructions"
@@ -424,9 +423,10 @@ function NewSeatingPlan() {
                   <FormLabel>Mandatory Instructions</FormLabel>
                   <FormControl>
                     <Textarea 
+                      {...field}
+                      onChange={(e) => handleFieldChange("mandatoryInstructions", e.target.value)}
                       placeholder="Enter any mandatory instructions for the examination...\nSeparate lines with Enter."
                       className="min-h-32"
-                      {...field} 
                     />
                   </FormControl>
                   <FormDescription>
@@ -437,10 +437,8 @@ function NewSeatingPlan() {
               )}
             />
 
-            {/* Room Selection - RoomSelectionTable handles its own FormField integration */}
             <RoomSelectionTable />
 
-            {/* Session Number */}
             <FormField
               control={form.control}
               name="session"
@@ -448,7 +446,13 @@ function NewSeatingPlan() {
                 <FormItem>
                   <FormLabel>Session</FormLabel>
                   <FormControl>
-                    <Input type="number" min={1} step={1} {...field} />
+                    <Input 
+                      type="number" 
+                      min={1} 
+                      step={1} 
+                      {...field} 
+                      onChange={(e) => handleFieldChange("session", parseInt(e.target.value))}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
