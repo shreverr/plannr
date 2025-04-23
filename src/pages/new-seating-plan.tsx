@@ -95,11 +95,30 @@ function NewSeatingPlan() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPlan?.studentUploads, currentPlan?.examinationName, currentPlan?.date, currentPlan?.fromTime, currentPlan?.toTime, currentPlan?.cloakRoomVenue, currentPlan?.mandatoryInstructions, currentPlan?.examType, currentPlan?.examMode, currentPlan?.selectedRooms, form.reset]);
 
-  // Removed useEffect that watched form changes to update currentPlan continuously
+  // REMOVE THIS EFFECT to prevent the infinite loop
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      const existingUploads = currentPlan?.studentUploads || [];
+      setCurrentPlan({
+        examinationName: values.examinationName || "",
+        date: values.date || "",
+        examType: values.examType || "regular",
+        examMode: values.examMode || "offline",
+        session: values.session || 1,
+        selectedRooms: values.selectedRooms || [],
+        fromTime: values.fromTime || new Date(), 
+        toTime: values.toTime || new Date(), 
+        studentUploads: existingUploads,
+        cloakRoomVenue: values.cloakRoomVenue || "",
+        mandatoryInstructions: values.mandatoryInstructions || "",
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [form, setCurrentPlan, currentPlan?.studentUploads]);
+
+
   // The form state managed by react-hook-form is the source of truth for submission.
   // currentPlan is primarily used for initialization and managing studentUploads array.
-
-
 
   const onSubmit = async (data: FormValues) => {
     console.log("onSubmit function called with data:", data); // <-- Add this log
@@ -215,6 +234,8 @@ function NewSeatingPlan() {
     updateStudentUpload(index, {
       branchCode: data.branchCode ?? existing.branchCode,
       subjectCode: data.subjectCode ?? existing.subjectCode,
+      semester: existing.semester,
+      batchYear: existing.batchYear,
       csvFilePath: existing.csvFilePath,
       csvFileName: existing.csvFileName,
     });
@@ -231,12 +252,16 @@ function NewSeatingPlan() {
           branchCode: existing.branchCode,
           subjectCode: existing.subjectCode,
           csvFilePath: filePath,
+          semester: existing.semester,
+          batchYear: existing.batchYear,
           csvFileName: file.name,
         });
       } else {
         updateStudentUpload(index, {
           branchCode: existing.branchCode,
           subjectCode: existing.subjectCode,
+          semester: existing.semester,
+          batchYear: existing.batchYear,
           csvFilePath: null,
           csvFileName: null,
         });
@@ -246,6 +271,8 @@ function NewSeatingPlan() {
         branchCode: existing.branchCode,
         subjectCode: existing.subjectCode,
         csvFilePath: null,
+        semester: existing.semester,
+        batchYear: existing.batchYear,
         csvFileName: null,
       });
     }

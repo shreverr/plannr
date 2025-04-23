@@ -17,8 +17,9 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
     const [channel, ...omit] = args;
     return electron.ipcRenderer.invoke(channel, ...omit);
   },
-  generateSeatingP: (data) => electron.ipcRenderer.invoke("generate-seating-plan", data)
+  generateSeatingP: (data) => electron.ipcRenderer.invoke("generate-seating-plan", data),
   // You can expose other APTs you need here.
+  generateAttendaceS: (data) => electron.ipcRenderer.invoke("generate-attendance-sheet", data)
   // ...
 });
 console.log("Preload loaded");

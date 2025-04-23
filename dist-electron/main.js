@@ -1564,6 +1564,164 @@ function generateSeatingPlan(options) {
     });
   });
 }
+function generateAttendanceSheet(options) {
+  console.log("[AttendanceGen] Starting generation with options:", options);
+  return new Promise((resolve, reject) => {
+    const { data, outputFile } = options;
+    const doc = new PDFDocument({ size: "A4", layout: "portrait", margin: 30 });
+    const stream = fs.createWriteStream(outputFile);
+    doc.pipe(stream);
+    const pageWidth = doc.page.width;
+    const pageHeight = doc.page.height;
+    const margin = 30;
+    const maxRowsPerPage = 25;
+    const totalPages = Math.ceil(data.students.length / maxRowsPerPage) || 1;
+    console.log(`[AttendanceGen] Calculated total pages: ${totalPages}`);
+    const baseHeaders = ["S. No", "Batch", "Sem.", "Student Name", "University Roll No", "Answer Sheet Serial No.", "Machine No.", "Signature", "Time Out"];
+    const baseColWidths = [35, 40, 35, 120, 80, 70, 60, 70, 50];
+    const rowHeight = 20;
+    for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
+      console.log(`[AttendanceGen] Processing page: ${currentPage}`);
+      let yPos = margin;
+      if (data.logoPath) {
+        try {
+          doc.image(data.logoPath, margin, yPos, { width: 50 });
+        } catch (err) {
+          console.warn(`Warning: Logo image not found at ${data.logoPath}`);
+        }
+      }
+      doc.fontSize(10).font("Helvetica").text(`${currentPage}/${totalPages}`, pageWidth - margin - 50, yPos, { width: 50, align: "right" });
+      yPos += 5;
+      doc.fontSize(14).font("Helvetica-Bold").text(data.universityName, margin, yPos, { align: "center" });
+      yPos += 16;
+      doc.fontSize(11).font("Helvetica").text(data.examTitle, margin, yPos, { align: "center" });
+      yPos += 20;
+      doc.fontSize(9).font("Helvetica-Bold").text("Note:", margin, yPos);
+      yPos += 12;
+      doc.font("Helvetica");
+      data.noteLines.forEach((line) => {
+        doc.text(line, margin + 10, yPos, { continued: false, indent: 5 });
+        yPos += 11;
+      });
+      yPos += 30;
+      const detailStartY = yPos;
+      doc.fontSize(10).font("Helvetica-Bold");
+      doc.text(`Date & Session: ${data.dateAndSession}`, margin, yPos);
+      yPos += 14;
+      doc.text(`Subject: ${data.subject}`, margin, yPos);
+      yPos += 14;
+      doc.text(`Mode of Examination: ${data.modeOfExamination}`, margin, yPos);
+      yPos = detailStartY;
+      const rightColX = pageWidth / 2 + 20;
+      doc.text(`Branch/Sem/Batch: ${data.branchSemBatch}`, rightColX, yPos, { align: "right" });
+      yPos += 14;
+      doc.text(`Subject Code: ${data.subjectCode}`, rightColX, yPos, { align: "right" });
+      yPos += 14;
+      doc.text(`Session-${data.session}`, rightColX, yPos, { align: "right" });
+      yPos += 25;
+      const tableTop = yPos;
+      let headers = [...baseHeaders];
+      let colWidths = [...baseColWidths];
+      if (data.modeOfExamination.toUpperCase() === "OFFLINE") {
+        const machineNoIndex = headers.indexOf("Machine No.");
+        if (machineNoIndex > -1) {
+          headers.splice(machineNoIndex, 1);
+          colWidths.splice(machineNoIndex, 1);
+        }
+        const timeOutIndex = headers.indexOf("Time Out");
+        if (timeOutIndex > -1) {
+          headers.splice(timeOutIndex, 1);
+          colWidths.splice(timeOutIndex, 1);
+        }
+      }
+      const tableWidth = colWidths.reduce((a, b) => a + b, 0);
+      const tableStartX = (pageWidth - tableWidth) / 2;
+      doc.font("Helvetica-Bold").fontSize(8);
+      let currentX = tableStartX;
+      const headerRowHeight = rowHeight * (headers.some((h) => h.includes("\n")) ? 1.5 : 1);
+      headers.forEach((header, i) => {
+        const headerHeightMultiplier = header.includes("\n") ? 1.5 : 1;
+        const headerYOffset = header.includes("Answer Sheet") ? 1.5 : 7;
+        doc.rect(currentX, tableTop, colWidths[i], rowHeight * headerHeightMultiplier).stroke();
+        doc.text(header.replace("\n", "\n"), currentX + 2, tableTop + headerYOffset, { width: colWidths[i] - 4, align: "center" });
+        currentX += colWidths[i];
+      });
+      doc.font("Helvetica").fontSize(8);
+      const startStudentIndex = (currentPage - 1) * maxRowsPerPage;
+      const endStudentIndex = Math.min(startStudentIndex + maxRowsPerPage, data.students.length);
+      console.log(`[AttendanceGen] Page ${currentPage} - Student index range: ${startStudentIndex} to ${endStudentIndex - 1}`);
+      let tableBottom = tableTop + headerRowHeight;
+      for (let i = startStudentIndex; i < endStudentIndex; i++) {
+        const student = data.students[i];
+        const rowIndexOnPage = i - startStudentIndex;
+        const currentY = tableTop + headerRowHeight + rowIndexOnPage * rowHeight;
+        console.log(`[AttendanceGen] Page ${currentPage} - Drawing row for student index ${i} at Y: ${currentY}`);
+        currentX = tableStartX;
+        if (currentY + rowHeight > pageHeight - 100) break;
+        colWidths.forEach((colWidth, j) => {
+          doc.rect(currentX, currentY, colWidth, rowHeight).stroke();
+          let cellText = "";
+          const header = headers[j];
+          if (student) {
+            switch (header) {
+              case "S. No":
+                cellText = (i + 1).toString();
+                break;
+              case "Batch":
+                cellText = student.batch.toString();
+                break;
+              case "Sem.":
+                cellText = student.sem.toString();
+                break;
+              case "Student Name":
+                cellText = student.studentName;
+                break;
+              case "University Roll No":
+                cellText = student.universityRollNo;
+                break;
+              default:
+                cellText = "";
+            }
+          }
+          let align = "left";
+          if (["S. No", "Batch", "Sem.", "University Roll No"].includes(header)) {
+            align = "center";
+          }
+          doc.text(cellText, currentX + 2, currentY + 5, {
+            width: colWidth - 4,
+            align
+          });
+          currentX += colWidth;
+        });
+        tableBottom = currentY + rowHeight;
+      }
+      let footerYPos = tableBottom + 20;
+      console.log(`[AttendanceGen] Page ${currentPage} - Calculated footer Y position: ${footerYPos}`);
+      doc.fontSize(9).font("Helvetica");
+      doc.text("Total No. of Presentees: __________", margin, footerYPos);
+      doc.text("Total No. of Absentees: __________", margin + 220, footerYPos);
+      doc.text("Total No. of Detainees: __________", margin + 420, footerYPos);
+      footerYPos += 20;
+      doc.text("Unfair Means Case(s) Roll No. (if any): ____________________", margin, footerYPos);
+      footerYPos += 30;
+      doc.text("Name of the Invigilators", margin, footerYPos);
+      doc.text("Signature of the Invigilators", pageWidth - margin - 150, footerYPos, { align: "right" });
+      footerYPos += 10;
+      if (currentPage < totalPages) {
+        doc.addPage();
+      }
+    }
+    doc.end();
+    stream.on("finish", () => {
+      console.log(`[AttendanceGen] PDF generation finished for: ${outputFile}`);
+      resolve(outputFile);
+    });
+    stream.on("error", (err) => {
+      console.error(`[AttendanceGen] Error generating PDF: ${outputFile}`, err);
+      reject(err);
+    });
+  });
+}
 createRequire(import.meta.url);
 const __dirname = path$1.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path$1.join(__dirname, "..");
@@ -1710,6 +1868,88 @@ ipcMain.handle("generate-seating-plan", async (event, arg) => {
   } catch (error) {
     console.error("IPC Handler Error:", error);
     return { success: false, error: error.message || "Unknown error" };
+  }
+});
+ipcMain.handle("generate-attendance-sheet", async (event, arg) => {
+  console.log("[IPC] Received generate-attendance-sheet request with args:", arg);
+  try {
+    const { branchCode, subjectCode, semester, batchYear, csvFilePath } = arg;
+    if (!csvFilePath || typeof csvFilePath !== "string") {
+      throw new Error("CSV file path is missing or invalid.");
+    }
+    let studentList = [];
+    try {
+      const fileContent = await fs$1.readFile(csvFilePath, "utf8");
+      const parseResult = Papa.parse(fileContent.trim(), {
+        header: false,
+        // No header row
+        skipEmptyLines: true
+      });
+      if (parseResult.errors.length > 0) {
+        console.error(`Error parsing CSV ${csvFilePath}:`, parseResult.errors);
+        throw new Error(`Failed to parse CSV: ${parseResult.errors[0].message}`);
+      }
+      studentList = parseResult.data.map((row, index) => {
+        if (row.length < 2 || !row[0] || !row[1]) {
+          console.warn(`Skipping invalid row ${index + 1} in ${csvFilePath}:`, row);
+          return null;
+        }
+        return { rollNo: row[0].trim(), name: row[1].trim() };
+      }).filter((student) => student !== null);
+      if (studentList.length === 0) {
+        throw new Error(`CSV file ${csvFilePath} is empty or contains no valid student data (expected rollnumber, name).`);
+      }
+      console.log(`[IPC] Parsed ${studentList.length} students from ${csvFilePath}`);
+    } catch (readError) {
+      console.error(`Error reading or parsing CSV file ${csvFilePath}:`, readError);
+      throw new Error(`Failed to process student file ${csvFilePath}: ${readError.message}`);
+    }
+    const attendanceStudents = studentList.map((student, index) => ({
+      sNo: index + 1,
+      batch: batchYear,
+      // Use batchYear from args
+      sem: semester,
+      // Use semester from args
+      studentName: student.name,
+      universityRollNo: student.rollNo
+    }));
+    const attendanceData = {
+      universityName: "Chitkara University, Punjab",
+      // Placeholder
+      examTitle: `Attendance (${arg.examType == "regular" ? "Regular" : "Reappear"}) for End Term Examinations, December 2024`,
+      // Placeholder
+      noteLines: [
+        "1. Centre Superintendents are requested to send this slip to the Assistant Registrar (Examinations) securely put inside the packet along with the answer-books\n2. Please ensure that the memo is not sent separately in any case."
+      ],
+      dateAndSession: `${(/* @__PURE__ */ new Date()).toLocaleDateString()} (Session-${arg.session})`,
+      // Placeholder
+      subject: `${subjectCode} - ${branchCode}`,
+      // Use provided codes
+      modeOfExamination: arg.mode,
+      // Assuming offline, maybe make configurable?
+      branchSemBatch: `${branchCode}/${semester}/${batchYear}`,
+      subjectCode,
+      session: "1",
+      // Placeholder
+      students: attendanceStudents,
+      logoPath: path$1.join(process.env.VITE_PUBLIC || "public", "image.png")
+      // Example logo path
+    };
+    const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[T:.-]/g, "").slice(0, 14);
+    const defaultDownloadsPath = app.getPath("downloads");
+    const safeBranchCode = branchCode.replace(/[^a-z0-9]/gi, "_");
+    const safeSubjectCode = subjectCode.replace(/[^a-z0-9]/gi, "_");
+    const outputFile = path$1.join(defaultDownloadsPath, `Attendance_${safeBranchCode}_${safeSubjectCode}_${timestamp}.pdf`);
+    console.log(`[IPC] Generating attendance sheet at: ${outputFile}`);
+    const resultPath = await generateAttendanceSheet({
+      outputFile,
+      data: attendanceData
+    });
+    console.log(`[IPC] Attendance sheet generated successfully: ${resultPath}`);
+    return { success: true, path: resultPath };
+  } catch (error) {
+    console.error("[IPC] Error handling generate-attendance-sheet:", error);
+    return { success: false, error: error.message || "Unknown error generating attendance sheet." };
   }
 });
 app.whenReady().then(createWindow);

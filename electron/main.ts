@@ -6,7 +6,7 @@ import fs from 'node:fs/promises'; // Import fs promises for async file reading
 import Papa from 'papaparse'; // Import papaparse for CSV parsing
  // Import StudentGroup instead of Student
  import { ExamConfig, generateSeatingPlan, Room, StudentGroup } from './generator'
-import { exampleAttendanceGeneration } from './attendance-gen';
+import { AttendanceData, exampleAttendanceGeneration, generateAttendanceSheet, StudentAttendanceInfo } from './attendance-gen';
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -210,6 +210,97 @@ ipcMain.handle('generate-seating-plan', async (event, arg) => {
    } catch (error: any) {
      console.error("IPC Handler Error:", error);
      return { success: false, error: error.message || 'Unknown error' };
+  }
+});
+
+ipcMain.handle('generate-attendance-sheet', async (event, arg) => {
+  console.log('[IPC] Received generate-attendance-sheet request with args:', arg);
+  try {
+    const { branchCode, subjectCode, semester, batchYear, csvFilePath } = arg;
+
+    if (!csvFilePath || typeof csvFilePath !== 'string') {
+      throw new Error('CSV file path is missing or invalid.');
+    }
+
+    // 1. Read and Parse CSV
+    let studentList: { rollNo: string; name: string }[] = [];
+    try {
+      const fileContent = await fs.readFile(csvFilePath, 'utf8');
+      const parseResult = Papa.parse<string[]>(fileContent.trim(), {
+        header: false, // No header row
+        skipEmptyLines: true,
+      });
+
+      if (parseResult.errors.length > 0) {
+        console.error(`Error parsing CSV ${csvFilePath}:`, parseResult.errors);
+        throw new Error(`Failed to parse CSV: ${parseResult.errors[0].message}`);
+      }
+
+      // Expecting [rollnumber, name] format
+      studentList = parseResult.data.map((row, index) => {
+        if (row.length < 2 || !row[0] || !row[1]) {
+          console.warn(`Skipping invalid row ${index + 1} in ${csvFilePath}:`, row);
+          return null; // Skip invalid rows
+        }
+        return { rollNo: row[0].trim(), name: row[1].trim() };
+      }).filter(student => student !== null) as { rollNo: string; name: string }[]; // Filter out nulls
+
+      if (studentList.length === 0) {
+        throw new Error(`CSV file ${csvFilePath} is empty or contains no valid student data (expected rollnumber, name).`);
+      }
+      console.log(`[IPC] Parsed ${studentList.length} students from ${csvFilePath}`);
+
+    } catch (readError: any) {
+      console.error(`Error reading or parsing CSV file ${csvFilePath}:`, readError);
+      throw new Error(`Failed to process student file ${csvFilePath}: ${readError.message}`);
+    }
+
+    // 2. Prepare Attendance Data
+    const attendanceStudents: StudentAttendanceInfo[] = studentList.map((student, index) => ({
+      sNo: index + 1,
+      batch: batchYear, // Use batchYear from args
+      sem: semester,   // Use semester from args
+      studentName: student.name,
+      universityRollNo: student.rollNo,
+    }));
+
+    // TODO: Get these details from UI or config instead of hardcoding
+    const attendanceData: AttendanceData = {
+      universityName: 'Chitkara University, Punjab', // Placeholder
+      examTitle: `Attendance (${arg.examType == 'regular' ? 'Regular' : 'Reappear'}) for End Term Examinations, December 2024`, // Placeholder
+      noteLines:  [
+        '1. Centre Superintendents are requested to send this slip to the Assistant Registrar (Examinations) securely put inside the packet along with the answer-books\n2. Please ensure that the memo is not sent separately in any case.',
+      ],
+      dateAndSession: `${new Date().toLocaleDateString()} (Session-${arg.session})`, // Placeholder
+      subject: `${subjectCode} - ${branchCode}`, // Use provided codes
+      modeOfExamination: arg.mode, // Assuming offline, maybe make configurable?
+      branchSemBatch: `${branchCode}/${semester}/${batchYear}`,
+      subjectCode: subjectCode,
+      session: '1', // Placeholder
+      students: attendanceStudents,
+      logoPath: path.join(process.env.VITE_PUBLIC || 'public', 'image.png'), // Example logo path
+    };
+
+    // 3. Define Output Path
+    const timestamp = new Date().toISOString().replace(/[T:.-]/g, '').slice(0, 14);
+    const defaultDownloadsPath = app.getPath('downloads');
+    const safeBranchCode = branchCode.replace(/[^a-z0-9]/gi, '_');
+    const safeSubjectCode = subjectCode.replace(/[^a-z0-9]/gi, '_');
+    const outputFile = path.join(defaultDownloadsPath, `Attendance_${safeBranchCode}_${safeSubjectCode}_${timestamp}.pdf`);
+
+    // 4. Generate Attendance Sheet
+    console.log(`[IPC] Generating attendance sheet at: ${outputFile}`);
+    const resultPath = await generateAttendanceSheet({
+      outputFile: outputFile,
+      data: attendanceData,
+    });
+
+    console.log(`[IPC] Attendance sheet generated successfully: ${resultPath}`);
+    return { success: true, path: resultPath };
+
+  } catch (error: any) {
+    console.error('[IPC] Error handling generate-attendance-sheet:', error);
+    return { success: false, error: error.message || 'Unknown error generating attendance sheet.' };
   }
 });
 

@@ -17,7 +17,7 @@ export type SeatingPlanData = {
   toTime: Date;
   cloakRoomVenue: string;
   mandatoryInstructions: string;
-  selectedRooms: string[];
+  selectedRooms: (string | undefined)[];
   examType: 'regular' | 'reappear';
   examMode: 'online' | 'offline'; // <-- Added examMode
   session: number; // <-- Added session field

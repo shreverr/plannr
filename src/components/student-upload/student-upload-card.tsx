@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { FileInput } from "@/components/ui/file-input"; // Assuming FileInput exists and works
 import { Card, CardContent } from "@/components/ui/card";
 import { X } from "lucide-react";
-import { StudentUploadData } from "@/store/seating-plan.store"; // Import from store
+import useSeatingPlanStore, { StudentUploadData } from "@/store/seating-plan.store"; // Import from store
 
 // Remove local type definition if it's defined in the store
 // export type StudentUploadData = {
@@ -55,6 +55,45 @@ export function StudentUploadCard({
   const handleFileSelect = (file: File | null) => {
     // Call the specific handler for file changes
     onFileChange(file);
+  };
+
+  const { currentPlan  } = useSeatingPlanStore();
+
+  const handleGenerateAttendance = async () => {
+    console.log('Generate attendance sheet clicked for:', data);
+    if (!data.csvFilePath) {
+      console.error("CSV file path is missing.");
+      // Optionally show an error message to the user
+      return;
+    }
+    try {
+      // Send data needed for attendance sheet generation
+      const result = await window.ipcRenderer.invoke('generate-attendance-sheet', {
+        branchCode: data.branchCode,
+        subjectCode: data.subjectCode,
+        semester: data.semester,
+        batchYear: data.batchYear,
+        csvFilePath: data.csvFilePath, // Send the path
+        mode: currentPlan?.examMode,
+        examType: currentPlan?.examType,
+        session: currentPlan?.session
+        // Add other relevant data if needed by the main process
+        // e.g., exam details if they aren't globally available in main.ts
+      });
+
+      if (result.success) {
+        console.log(`Attendance sheet generated successfully: ${result.path}`);
+        // Optionally show a success message or open the file
+        alert(`Attendance sheet saved to: ${result.path}`);
+      } else {
+        console.error('Error generating attendance sheet:', result.error);
+        // Show error message to the user
+        alert(`Error generating attendance sheet: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('IPC Error:', error);
+      alert(`Failed to communicate with the generation process: ${error}`);
+    }
   };
 
   return (
@@ -131,12 +170,14 @@ export function StudentUploadCard({
               File: {data.csvFileName}
             </p>
           )}
-          {/* Optionally display the path if available and needed */}
-          {/* {data.csvFilePath && (
-            <p className="text-xs text-gray-500 truncate" title={data.csvFilePath}>
-              Path: {data.csvFilePath}
-            </p>
-          )} */}
+
+          <Button 
+            className="mt-4 w-full"
+            onClick={handleGenerateAttendance}
+            disabled={disabled || !data.csvFileName}
+          >
+            Generate Attendance Sheet
+          </Button>
         </div>
       </CardContent>
     </Card>
