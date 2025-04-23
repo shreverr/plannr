@@ -66,6 +66,8 @@ export interface SeatingPlanOptions {
 // Renamed and modified function to assign seats based on StudentGroup
 function assignSeatsByGroup(studentGroups: StudentGroup[], rooms: Room[]): Room[] {
   // Create a copy of the student lists within each group to avoid modifying the original input
+  studentGroups.forEach((g) => {console.log(g.branchCode, g.subjectCode);
+  })
   const groupMap = new Map<number, string[]>();
   studentGroups.forEach((group, index) => {
     groupMap.set(index, [...group.studentList]); // Use index as key, copy student list
@@ -221,7 +223,7 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
        .fontSize(9)
        .fillColor(colors.black);
     
-    const roomHeader = `${room.name} - ${room.buildingLocation}`;
+    const roomHeader = `${room.name}`;
     const roomTitleWidth = doc.widthOfString(roomHeader);
     doc.text(roomHeader, (pageWidth - roomTitleWidth) / 2, startY);
     
@@ -304,77 +306,89 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     
     // Summary table
     const summaryStartY = tableEndY + 30;
-    const summaryColWidths = [120, 60, 60];
+    const summaryColWidths = [120, 60, 120]; // Adjusted last column width for subject code
     const summaryWidth = summaryColWidths.reduce((a, b) => a + b, 0);
     
-    // Create summary table
-    const presentCount = room.seatingGrid.flat().filter(id => id !== null).length;
-    const absentCount = room.capacity - presentCount;
+    // Create summary table - now for each student group
+    let currentY = summaryStartY;
     
     // Header row
-    doc.rect(40, summaryStartY, summaryWidth, rowHeight)
+    doc.rect(40, currentY, summaryWidth, rowHeight)
        .fillColor(colors.white)
        .fill();
     
     doc.fillColor(colors.black)
-       .fontSize(9);  // Set font size to 9 for the summary table
+       .fontSize(9);
     
-    doc.text("Branch", 40 + 5, summaryStartY + 7, { width: summaryColWidths[0] - 10, align: 'center' });
-    doc.text("Appearing", 40 + summaryColWidths[0] + 5, summaryStartY + 7,
+    doc.text("Branch", 40 + 5, currentY + 7, { width: summaryColWidths[0] - 10, align: 'center' });
+    doc.text("Appearing", 40 + summaryColWidths[0] + 5, currentY + 7,
             { width: summaryColWidths[1] - 10, align: 'center' });
-    doc.text("Subject", 40 + summaryColWidths[0] + summaryColWidths[1] + 5, summaryStartY + 7,
+    doc.text("Subject Code", 40 + summaryColWidths[0] + summaryColWidths[1] + 5, currentY + 7,
             { width: summaryColWidths[2] - 10, align: 'center' });
     
-    // Data rows
-    doc.rect(40, summaryStartY + rowHeight, summaryWidth, rowHeight * 2)
+    currentY += rowHeight;
+    
+    // Data rows - one for each student group
+    for (const group of studentGroups) {
+        doc.rect(40, currentY, summaryWidth, rowHeight)
+           .fillColor(colors.white)
+           .fill();
+        
+        doc.fillColor(colors.black);
+        
+        // Count appearances for this group in this room
+        const groupAppearances = room.seatingGrid.flat()
+            .filter(id => id !== null && group.studentList.includes(id)).length;
+        
+        doc.text(group.branchCode, 40 + 5, currentY + 7,
+                { width: summaryColWidths[0] - 10, align: 'center' });
+        doc.text(`${groupAppearances}`, 40 + summaryColWidths[0] + 5, currentY + 7,
+                { width: summaryColWidths[1] - 10, align: 'center' });
+        doc.text(group.subjectCode, 40 + summaryColWidths[0] + summaryColWidths[1] + 5, currentY + 7,
+                { width: summaryColWidths[2] - 10, align: 'center' });
+        
+        currentY += rowHeight;
+    }
+    
+    // Add total row
+    doc.rect(40, currentY, summaryWidth, rowHeight)
        .fillColor(colors.white)
        .fill();
     
     doc.fillColor(colors.black);
     
-    // Row 1
-    doc.text("ENROLLED", 40 + 5, summaryStartY + rowHeight + 7,
+    const totalPresent = room.seatingGrid.flat().filter(id => id !== null).length;
+    
+    doc.text("Total", 40 + 5, currentY + 7,
             { width: summaryColWidths[0] - 10, align: 'center' });
-    doc.text(`${room.capacity}`, 40 + summaryColWidths[0] + 5, summaryStartY + rowHeight + 7,
+    doc.text(`${totalPresent}`, 40 + summaryColWidths[0] + 5, currentY + 7,
             { width: summaryColWidths[1] - 10, align: 'center' });
-    doc.text(`${absentCount}`, 40 + summaryColWidths[0] + summaryColWidths[1] + 5, summaryStartY + rowHeight + 7,
+    doc.text("", 40 + summaryColWidths[0] + summaryColWidths[1] + 5, currentY + 7,
             { width: summaryColWidths[2] - 10, align: 'center' });
     
-    // Row 2
-    doc.text("APPEARED", 40 + 5, summaryStartY + rowHeight * 2 + 7,
-            { width: summaryColWidths[0] - 10, align: 'center' });
-    doc.text(`${presentCount}`, 40 + summaryColWidths[0] + 5, summaryStartY + rowHeight * 2 + 7,
-            { width: summaryColWidths[1] - 10, align: 'center' });
-    
-    // Draw summary table grid lines
+    // Draw grid lines for the table
     doc.strokeColor(colors.black);
     
     // Vertical lines
-    let xPos = 40; // Starting position
-    
-    // Draw the leftmost vertical line first
-    doc.moveTo(xPos, summaryStartY)
-       .lineTo(xPos, summaryStartY + rowHeight * 3)
-       .stroke();
-    
-    // Then draw the remaining vertical lines
-    for (const width of summaryColWidths) {
-      xPos += width;
-      doc.moveTo(xPos, summaryStartY)
-         .lineTo(xPos, summaryStartY + rowHeight * 3)
-         .stroke();
+    let xPos = 40;
+    for (let i = 0; i <= summaryColWidths.length; i++) {
+        doc.moveTo(xPos, summaryStartY)
+           .lineTo(xPos, currentY + rowHeight)
+           .stroke();
+        if (i < summaryColWidths.length) {
+            xPos += summaryColWidths[i];
+        }
     }
     
     // Horizontal lines
-    for (let i = 0; i <= 3; i++) {
-      const y = summaryStartY + i * rowHeight;
-      doc.moveTo(40, y)
-         .lineTo(40 + summaryWidth, y)
-         .stroke();
+    for (let y = summaryStartY; y <= currentY + rowHeight; y += rowHeight) {
+        doc.moveTo(40, y)
+           .lineTo(40 + summaryWidth, y)
+           .stroke();
     }
     
     // Footer with signature lines
-    let footerY = summaryStartY + rowHeight * 3 + 30;
+    let footerY = currentY + rowHeight + 30;
     
     doc.fontSize(9);
     doc.text("UMC Roll Number (if any): _____________________________ Absent Roll Number : _____________________________ Remarks: _____________________________",

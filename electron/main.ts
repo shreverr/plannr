@@ -190,7 +190,7 @@ ipcMain.handle('generate-seating-plan', async (_, arg) => {
     }
 
     // 2. Prepare Rooms (Map frontend room structure to backend Room class instances)
-    const rooms = roomsFromRenderer.map((r: any) => new Room(r.name, r.rows, r.cols, r.buildingLocation || "Default Location"));
+    const rooms = roomsFromRenderer.map((r: any) => new Room(r.name, r.rows, r.cols || "Default Location"));
 
     // 3. Define Output Path
     const timestamp = new Date().toISOString().replace(/[T:.-]/g, '').slice(0, 14);

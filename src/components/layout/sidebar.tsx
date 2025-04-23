@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Plus, FolderOpen, School } from "lucide-react";
+import { LayoutDashboard, Plus, 
+  // FolderOpen,
+   School } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 export function Sidebar() {
@@ -32,10 +34,10 @@ export function Sidebar() {
               New Plan
             </Link>
           </Button>
-          <Button variant="ghost" className="w-full justify-start gap-2">
+          {/* <Button variant="ghost" className="w-full justify-start gap-2">
             <FolderOpen className="h-5 w-5" />
             Recent Plans
-          </Button>
+          </Button> */}
           <Button variant="ghost" className="w-full justify-start gap-2" asChild>
             <Link to="/rooms">
               <School className="h-5 w-5" />
