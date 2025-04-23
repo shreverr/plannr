@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   generateSeatingP: (data: any) => ipcRenderer.invoke('generate-seating-plan', data),
   // You can expose other APTs you need here.
   generateAttendaceS: (data: any) => ipcRenderer.invoke('generate-attendance-sheet', data),
+  countStudents: (data: { csvFilePath: string }) => ipcRenderer.invoke('count-students', data),
   // ...
 })
 

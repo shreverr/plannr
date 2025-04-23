@@ -19,7 +19,8 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
   },
   generateSeatingP: (data) => electron.ipcRenderer.invoke("generate-seating-plan", data),
   // You can expose other APTs you need here.
-  generateAttendaceS: (data) => electron.ipcRenderer.invoke("generate-attendance-sheet", data)
+  generateAttendaceS: (data) => electron.ipcRenderer.invoke("generate-attendance-sheet", data),
+  countStudents: (data) => electron.ipcRenderer.invoke("count-students", data)
   // ...
 });
 console.log("Preload loaded");

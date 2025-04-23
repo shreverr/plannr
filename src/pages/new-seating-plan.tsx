@@ -15,7 +15,6 @@ import useSeatingPlanStore, { StudentUploadData } from "@/store/seating-plan.sto
 import useRoomStore from "@/store/rooms.store"; // Import room store
 import { useEffect, useState, useCallback } from "react";
 // import { SeatingPlanPreview } from "@/components/seating-plan/seating-plan-preview"; // Remove preview import
-import { toast } from "sonner"; // Import toast for feedback
 
 // Helper function to format Date to HH:MM AM/PM
 const formatTime12Hour = (date: Date): string => {
@@ -113,10 +112,10 @@ function NewSeatingPlan() {
   const onSubmit = async (data: FormValues) => {
     console.log("onSubmit function called with data:", data); // <-- Add this log
     setIsGenerating(true);
-    toast.info("Generating seating plan...");
+    // alert("Generating seating plan...");
 
     if (!currentPlan || !currentPlan.studentUploads || currentPlan.studentUploads.length === 0) {
-      toast.error("Please add student information.");
+      alert("Please add student information.");
       setIsGenerating(false);
       return;
     }
@@ -124,17 +123,45 @@ function NewSeatingPlan() {
      // Validate student uploads (at least one file path must exist)
      const hasStudentData = currentPlan.studentUploads.some(upload => upload.csvFilePath);
      if (!hasStudentData) {
-       toast.error("Please upload at least one student CSV file.");
+       alert("Please upload at least one student CSV file.");
        setIsGenerating(false);
        return;
      }
      // Validate selected rooms
      if (!data.selectedRooms || data.selectedRooms.length === 0) {
-        toast.error("Please select at least one examination room.");
+        alert("Please select at least one examination room.");
         setIsGenerating(false);
         return;
      }
 
+     // Calculate total room capacity
+     const totalRoomCapacity = data.selectedRooms
+        .map(roomId => availableRooms.find(r => r.id === roomId))
+        .filter((room): room is NonNullable<typeof room> => room !== undefined)
+        .reduce((total, room) => total + (room.rows * room.columns), 0);
+
+     // Get total student count from all CSV files
+     let totalStudents = 0;
+     try {
+       for (const upload of currentPlan.studentUploads) {
+         if (!upload.csvFilePath) continue;
+         const result = await window.ipcRenderer.invoke('count-students', { csvFilePath: upload.csvFilePath });
+         if (result.success) {
+           totalStudents += result.count;
+         }
+       }
+       
+       if (totalStudents > totalRoomCapacity) {
+         alert(`Total students (${totalStudents}) exceed available seating capacity (${totalRoomCapacity}). Please select more rooms or reduce student count.`);
+         setIsGenerating(false);
+         return;
+       }
+     } catch (error) {
+       console.error('Error counting students:', error);
+       alert('Failed to validate student count against room capacity');
+       setIsGenerating(false);
+       return;
+     }
 
     // 1. Prepare ExamConfig
     const examConfig = {
@@ -181,17 +208,13 @@ function NewSeatingPlan() {
       console.log('Received result from main:', result);
 
       if (result.success) {
-        toast.success(`Seating plan generated successfully: ${result.path}`);
-        alert(`Attendance sheet saved to: ${result.path}`);
-        // Optionally open the file or show a link
-        // Example: window.ipcRenderer.send('open-file', result.path);
+        alert(`Seating plan generated successfully: ${result.path}`);
       } else {
-        toast.error(`Error generating seating plan: ${result.error}`);
         alert(`Error generating seating plan: ${result.error}`);
       }
     } catch (error: any) {
       console.error("IPC Error:", error);
-      toast.error(`Failed to communicate with backend: ${error.message || 'Unknown IPC error'}`);
+      alert(`Failed to communicate with backend: ${error.message || 'Unknown IPC error'}`);
     } finally {
       setIsGenerating(false);
     }
@@ -200,8 +223,8 @@ function NewSeatingPlan() {
   // Add error handler for react-hook-form validation
   const onValidationError = (errors: any) => {
     console.error("Form validation errors:", errors);
-    // Optionally, display a generic error toast if specific messages aren't enough
-    // toast.error("Please check the form for errors and try again.");
+    // Optionally, display a generic error alert if specific messages aren't enough
+    // alert("Please check the form for errors and try again.");
     setIsGenerating(false); // Ensure loading state is reset on validation error
   };
 
@@ -214,7 +237,7 @@ function NewSeatingPlan() {
     if (currentPlan && currentPlan.studentUploads.length > 1) {
        deleteStudentUpload(index);
     } else {
-        toast.warning("At least one student group is required.");
+        alert("At least one student group is required.");
     }
   };
 

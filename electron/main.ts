@@ -304,6 +304,35 @@ ipcMain.handle('generate-attendance-sheet', async (_, arg) => {
   }
 });
 
+ipcMain.handle('count-students', async (_, arg) => {
+  const { csvFilePath } = arg;
+  
+  try {
+    if (!csvFilePath || typeof csvFilePath !== 'string') {
+      throw new Error('CSV file path is missing or invalid.');
+    }
+
+    const fileContent = await fs.readFile(csvFilePath, 'utf8');
+    const parseResult = Papa.parse<string[]>(fileContent.trim(), {
+      header: false,
+      skipEmptyLines: true,
+    });
+
+    if (parseResult.errors.length > 0) {
+      console.error(`Error parsing CSV ${csvFilePath}:`, parseResult.errors);
+      throw new Error(`Failed to parse CSV: ${parseResult.errors[0].message}`);
+    }
+
+    // Count valid rows (must have at least one column)
+    const validRowCount = parseResult.data.filter(row => row.length > 0 && row[0].trim()).length;
+
+    return { success: true, count: validRowCount };
+  } catch (error: any) {
+    console.error('[IPC] Error counting students:', error);
+    return { success: false, error: error.message || 'Unknown error counting students.' };
+  }
+});
+
 // exampleAttendanceGeneration()
 
 app.whenReady().then(createWindow)

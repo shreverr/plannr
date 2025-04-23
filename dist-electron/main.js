@@ -1924,6 +1924,28 @@ ipcMain.handle("generate-attendance-sheet", async (_, arg) => {
     return { success: false, error: error.message || "Unknown error generating attendance sheet." };
   }
 });
+ipcMain.handle("count-students", async (_, arg) => {
+  const { csvFilePath } = arg;
+  try {
+    if (!csvFilePath || typeof csvFilePath !== "string") {
+      throw new Error("CSV file path is missing or invalid.");
+    }
+    const fileContent = await fs$1.readFile(csvFilePath, "utf8");
+    const parseResult = Papa.parse(fileContent.trim(), {
+      header: false,
+      skipEmptyLines: true
+    });
+    if (parseResult.errors.length > 0) {
+      console.error(`Error parsing CSV ${csvFilePath}:`, parseResult.errors);
+      throw new Error(`Failed to parse CSV: ${parseResult.errors[0].message}`);
+    }
+    const validRowCount = parseResult.data.filter((row) => row.length > 0 && row[0].trim()).length;
+    return { success: true, count: validRowCount };
+  } catch (error) {
+    console.error("[IPC] Error counting students:", error);
+    return { success: false, error: error.message || "Unknown error counting students." };
+  }
+});
 app.whenReady().then(createWindow);
 export {
   MAIN_DIST,
