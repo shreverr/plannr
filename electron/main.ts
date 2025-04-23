@@ -5,10 +5,10 @@ import path from 'node:path'
 import fs from 'node:fs/promises'; // Import fs promises for async file reading
 import Papa from 'papaparse'; // Import papaparse for CSV parsing
  // Import StudentGroup instead of Student
- import { ExamConfig, generateSeatingPlan, Room, StudentGroup } from './generator'
-import { AttendanceData, exampleAttendanceGeneration, generateAttendanceSheet, StudentAttendanceInfo } from './attendance-gen';
+ import { generateSeatingPlan, Room, StudentGroup } from './generator'
+import { AttendanceData, generateAttendanceSheet, StudentAttendanceInfo } from './attendance-gen';
 
-const require = createRequire(import.meta.url)
+createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // The built directory structure
@@ -31,66 +31,66 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 let win: BrowserWindow | null
 
-async function exampleUsage() {
-  // 1. Create exam configuration (Removed departmentColors)
-  const examConfig: ExamConfig = {
-    examName: "END TERM EXAMINATIONS - SPRING 2025",
-    examDate: "20/04/2025",
-    examTime: "09:00 a.m. - 12:00 p.m.",
-    cloakRoom: "OAT, Ground Floor, Le Corbusier Block",
-    instructions: [
-      "1. No student should be allowed to leave the Examination Hall before half time.",
-      "2. Mobile phones/Smart Watches/Electronic devices are strictly prohibited in examination halls.",
-      "3. Students without admit card must report to Examination Wing with University Identity Card.",
-      "4. No student is allowed to carry any paper/book/notes/mobile/calculator inside the examination venue.",
-      "5. Students must reach at least 15 minutes before the start of Examination."
-    ],
-    // departmentColors removed
-    logoPath: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg') // Optional - Use a valid path if needed
-  };
+// async function exampleUsage() {
+//   // 1. Create exam configuration (Removed departmentColors)
+//   const examConfig: ExamConfig = {
+//     examName: "END TERM EXAMINATIONS - SPRING 2025",
+//     examDate: "20/04/2025",
+//     examTime: "09:00 a.m. - 12:00 p.m.",
+//     cloakRoom: "OAT, Ground Floor, Le Corbusier Block",
+//     instructions: [
+//       "1. No student should be allowed to leave the Examination Hall before half time.",
+//       "2. Mobile phones/Smart Watches/Electronic devices are strictly prohibited in examination halls.",
+//       "3. Students without admit card must report to Examination Wing with University Identity Card.",
+//       "4. No student is allowed to carry any paper/book/notes/mobile/calculator inside the examination venue.",
+//       "5. Students must reach at least 15 minutes before the start of Examination."
+//     ],
+//     // departmentColors removed
+//     logoPath: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg') // Optional - Use a valid path if needed
+//   };
 
-  // 2. Create rooms
-  const rooms = [
-    new Room("Room A101", 5, 6, "DE-MORGAN BLOCK FIRST FLOOR"),
-    new Room("Room B202", 6, 5, "LE CORBUSIER BLOCK SECOND FLOOR")
-  ];
+//   // 2. Create rooms
+//   const rooms = [
+//     new Room("Room A101", 5, 6, "DE-MORGAN BLOCK FIRST FLOOR"),
+//     new Room("Room B202", 6, 5, "LE CORBUSIER BLOCK SECOND FLOOR")
+//   ];
 
-  // 3. Create student groups
-  const studentGroups: StudentGroup[] = [
-    {
-      branchCode: "CS",
-      subjectCode: "CS101",
-      studentList: Array.from({ length: 25 }, (_, i) => `CS${101 + i}`) // Generate 25 CS students
-    },
-    {
-      branchCode: "EE",
-      subjectCode: "EE201",
-      studentList: Array.from({ length: 20 }, (_, i) => `EE${201 + i}`) // Generate 20 EE students
-    },
-    {
-      branchCode: "ME",
-      subjectCode: "ME301",
-      studentList: Array.from({ length: 15 }, (_, i) => `ME${301 + i}`) // Generate 15 ME students
-    }
-  ];
+//   // 3. Create student groups
+//   const studentGroups: StudentGroup[] = [
+//     {
+//       branchCode: "CS",
+//       subjectCode: "CS101",
+//       studentList: Array.from({ length: 25 }, (_, i) => `CS${101 + i}`) // Generate 25 CS students
+//     },
+//     {
+//       branchCode: "EE",
+//       subjectCode: "EE201",
+//       studentList: Array.from({ length: 20 }, (_, i) => `EE${201 + i}`) // Generate 20 EE students
+//     },
+//     {
+//       branchCode: "ME",
+//       subjectCode: "ME301",
+//       studentList: Array.from({ length: 15 }, (_, i) => `ME${301 + i}`) // Generate 15 ME students
+//     }
+//   ];
 
 
-  // 4. Generate the seating plan (Pass studentGroups instead of students)
-  try {
-    const outputFile = await generateSeatingPlan({
-      outputFile: `./SeatingPlan_${new Date().toISOString().replace(/[T:.-]/g, '').slice(0, 14)}.pdf`,
-      examConfig,
-      studentGroups, // Use the new studentGroups array
-      rooms,
-    });
+//   // 4. Generate the seating plan (Pass studentGroups instead of students)
+//   try {
+//     const outputFile = await generateSeatingPlan({
+//       outputFile: `./SeatingPlan_${new Date().toISOString().replace(/[T:.-]/g, '').slice(0, 14)}.pdf`,
+//       examConfig,
+//       studentGroups, // Use the new studentGroups array
+//       rooms,
+//     });
 
-    console.log(`Seating plan generated successfully: ${outputFile}`);
-    return outputFile; // Return the path for the IPC handler
-  } catch (err) {
-    console.error('Error generating PDF:', err);
-    throw err; // Re-throw error for the IPC handler
-  }
-}
+//     console.log(`Seating plan generated successfully: ${outputFile}`);
+//     return outputFile; // Return the path for the IPC handler
+//   } catch (err) {
+//     console.error('Error generating PDF:', err);
+//     throw err; // Re-throw error for the IPC handler
+//   }
+// }
 
 function createWindow() {
   win = new BrowserWindow({
@@ -132,13 +132,13 @@ app.on('activate', () => {
   }
 })
 
-ipcMain.handle('generate-seating-plan', async (event, arg) => {
+ipcMain.handle('generate-seating-plan', async (_, arg) => {
   // Call exampleUsage and return its result (or handle errors)
   try {
     // Note: In a real app, you'd likely pass 'arg' containing
     // examConfig, studentGroups, and rooms from the renderer process
     // instead of using the hardcoded exampleUsage.
-    const result = await exampleUsage();
+    // const result = await exampleUsage();
 
     console.log("Received data in main process:", arg);
 
@@ -213,7 +213,7 @@ ipcMain.handle('generate-seating-plan', async (event, arg) => {
   }
 });
 
-ipcMain.handle('generate-attendance-sheet', async (event, arg) => {
+ipcMain.handle('generate-attendance-sheet', async (_, arg) => {
   console.log('[IPC] Received generate-attendance-sheet request with args:', arg);
   try {
     const { branchCode, subjectCode, semester, batchYear, csvFilePath } = arg;

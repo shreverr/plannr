@@ -47,7 +47,7 @@ export function generateAttendanceSheet(options: AttendanceOptions): Promise<str
     const pageWidth = doc.page.width;
     const pageHeight = doc.page.height;
     const margin = 30;
-    const contentWidth = pageWidth - 2 * margin;
+    // const contentWidth = pageWidth - 2 * margin;
     const maxRowsPerPage = 25; // Define max students per page (Changed from 35 to 20)
     const totalPages = Math.ceil(data.students.length / maxRowsPerPage) || 1; // Calculate total pages, ensure at least 1
     console.log(`[AttendanceGen] Calculated total pages: ${totalPages}`);
