@@ -289,9 +289,24 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
       for (let colIdx = 0; colIdx < colCount; colIdx++) {
         // Only show student ID if this row exists for this column
         const columnRowCount = room.columns[colIdx].rowCount;
-        const studentId = rowIdx < columnRowCount ? room.seatingGrid[rowIdx][colIdx] : null;
-        dataRow.getCell(colIdx + 2).value = studentId || '---';
-        dataRow.getCell(colIdx + 2).alignment = { horizontal: 'center', vertical: 'middle' };
+        const cell = dataRow.getCell(colIdx + 2);
+        
+        if (rowIdx < columnRowCount) {
+          // This row exists for this column
+          const studentId = room.seatingGrid[rowIdx][colIdx];
+          cell.value = studentId || '---';
+        } else {
+          // This row doesn't exist for this column (row has ended)
+          cell.value = '';
+          // Add grey background to indicate this cell is not part of the seating plan
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' } // Light gray
+          };
+        }
+        
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
       }
       
       // Style data row
@@ -449,7 +464,9 @@ export async function generateExampleSeatingPlanExcel() {
     ], 'DE-MORGAN BLOCK FIRST FLOOR'),
     new Room('DM-102', [
       { rowCount: 7 },
-      { rowCount: 5 },
+      { rowCount: 3 },
+      { rowCount: 7 },
+      { rowCount: 7 },
       { rowCount: 4 },
     ], 'DE-MORGAN BLOCK FIRST FLOOR')
   ];
