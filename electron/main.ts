@@ -5,8 +5,10 @@ import path from 'node:path'
 import fs from 'node:fs/promises'; // Import fs promises for async file reading
 import Papa from 'papaparse'; // Import papaparse for CSV parsing
  // Import StudentGroup instead of Student
- import { generateSeatingPlan, Room, StudentGroup } from './generator'
+//  import { generateSeatingPlan, Room, StudentGroup } from './generator'
 import { AttendanceData, generateAttendanceSheet, StudentAttendanceInfo } from './attendance-gen';
+import { generateSeatingPlan, Room, StudentGroup } from './excel-seating-gen';
+// import { generateExampleSeatingPlanExcel } from './excel-seating-gen';
 
 createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -195,7 +197,7 @@ ipcMain.handle('generate-seating-plan', async (_, arg) => {
     // 3. Define Output Path
     const timestamp = new Date().toISOString().replace(/[T:.-]/g, '').slice(0, 14);
     const defaultDownloadsPath = app.getPath('downloads'); // Get user's downloads directory
-    const outputFile = path.join(defaultDownloadsPath, `SeatingPlan_${timestamp}.pdf`);
+    const outputFile = path.join(defaultDownloadsPath, `SeatingPlan_${timestamp}.xlsx`);
 
     // 4. Generate Seating Plan
     const resultPath = await generateSeatingPlan({
@@ -334,5 +336,5 @@ ipcMain.handle('count-students', async (_, arg) => {
 });
 
 // exampleAttendanceGeneration()
-
+// generateExampleSeatingPlanExcel().catch(console.error);
 app.whenReady().then(createWindow)
