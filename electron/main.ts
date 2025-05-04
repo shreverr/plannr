@@ -135,13 +135,7 @@ app.on('activate', () => {
 })
 
 ipcMain.handle('generate-seating-plan', async (_, arg) => {
-  // Call exampleUsage and return its result (or handle errors)
   try {
-    // Note: In a real app, you'd likely pass 'arg' containing
-    // examConfig, studentGroups, and rooms from the renderer process
-    // instead of using the hardcoded exampleUsage.
-    // const result = await exampleUsage();
-
     console.log("Received data in main process:", arg);
 
     const { examConfig, studentGroups: studentGroupsFromRenderer, rooms: roomsFromRenderer } = arg;
@@ -192,7 +186,12 @@ ipcMain.handle('generate-seating-plan', async (_, arg) => {
     }
 
     // 2. Prepare Rooms (Map frontend room structure to backend Room class instances)
-    const rooms = roomsFromRenderer.map((r: any) => new Room(r.name, r.rows, r.cols || "Default Location"));
+    // Updated to match the new Room constructor that takes an array of column objects
+    const rooms = roomsFromRenderer.map((r: any) => {
+      // Create columns array with rowCount properties
+      // const columns = Array(r.cols).fill(null).map(() => ({ rowCount: r.rows }));
+      return new Room(r.name, r.columns, "Default Location");
+    });
 
     // 3. Define Output Path
     const timestamp = new Date().toISOString().replace(/[T:.-]/g, '').slice(0, 14);
@@ -336,5 +335,5 @@ ipcMain.handle('count-students', async (_, arg) => {
 });
 
 // exampleAttendanceGeneration()
-generateExampleSeatingPlanExcel().catch(console.error);
+// generateExampleSeatingPlanExcel().catch(console.error);
 app.whenReady().then(createWindow)

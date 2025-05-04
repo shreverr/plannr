@@ -63363,9 +63363,20 @@ function generateSeatingPlan(options) {
       dataRow.height = 18;
       for (let colIdx = 0; colIdx < colCount; colIdx++) {
         const columnRowCount = room.columns[colIdx].rowCount;
-        const studentId = rowIdx < columnRowCount ? room.seatingGrid[rowIdx][colIdx] : null;
-        dataRow.getCell(colIdx + 2).value = studentId || "---";
-        dataRow.getCell(colIdx + 2).alignment = { horizontal: "center", vertical: "middle" };
+        const cell2 = dataRow.getCell(colIdx + 2);
+        if (rowIdx < columnRowCount) {
+          const studentId = room.seatingGrid[rowIdx][colIdx];
+          cell2.value = studentId || "---";
+        } else {
+          cell2.value = "";
+          cell2.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFE0E0E0" }
+            // Light gray
+          };
+        }
+        cell2.alignment = { horizontal: "center", vertical: "middle" };
       }
       dataRow.eachCell((cell2) => {
         cell2.border = {
@@ -63454,109 +63465,6 @@ function generateSeatingPlan(options) {
     });
   });
 }
-function getDefaultExamConfig() {
-  return {
-    examName: "END TERM EXAMINATIONS",
-    examDate: (/* @__PURE__ */ new Date()).toLocaleDateString(),
-    examTime: "01:00 p.m. - 04:00 p.m.",
-    cloakRoom: "OAT, Ground Floor, Le Corbusier Block",
-    instructions: [
-      "1. No student should be allowed to leave the Examination Hall before half time.",
-      "2. Mobile phones/Smart Watches/Electronic devices are strictly prohibited in examination halls; candidates are strictly banned",
-      "   from carrying these devices. If found with any such device, the same shall be confiscated and UMC will be registered.",
-      "3. No student is allowed to leave the examination hall before half time.",
-      "4. Students without admit card must report to Conduct Branch, Examination Wing (First Floor) with University Identity Card.",
-      "5. No student is allowed to carry any paper/book/notes/mobile/calculator etc. inside the examination venue.",
-      "6. Students must reach at least 15 minutes before the start of Examination at the respective examination venue."
-    ]
-  };
-}
-async function generateExampleSeatingPlanExcel() {
-  const rooms = [
-    new Room("DM-101", [
-      { rowCount: 3 },
-      { rowCount: 4 },
-      { rowCount: 4 },
-      { rowCount: 2 }
-    ], "DE-MORGAN BLOCK FIRST FLOOR"),
-    new Room("DM-102", [
-      { rowCount: 7 },
-      { rowCount: 5 },
-      { rowCount: 4 }
-    ], "DE-MORGAN BLOCK FIRST FLOOR")
-  ];
-  const studentGroups = [
-    {
-      branchCode: "CSE",
-      subjectCode: "CS-101",
-      studentList: [
-        "CSE001",
-        "CSE002",
-        "CSE003",
-        "CSE004",
-        "CSE005",
-        "CSE006",
-        "CSE007",
-        "CSE008",
-        "CSE009",
-        "CSE010",
-        "CSE011",
-        "CSE012",
-        "CSE013",
-        "CSE014",
-        "CSE015"
-      ]
-    },
-    {
-      branchCode: "ECE",
-      subjectCode: "EC-101",
-      studentList: [
-        "ECE001",
-        "ECE002",
-        "ECE003",
-        "ECE004",
-        "ECE005",
-        "ECE006",
-        "ECE007",
-        "ECE008",
-        "ECE009",
-        "ECE010"
-      ]
-    },
-    {
-      branchCode: "ME",
-      subjectCode: "ME-101",
-      studentList: [
-        "ME001",
-        "ME002",
-        "ME003",
-        "ME004",
-        "ME005",
-        "ME006",
-        "ME007",
-        "ME008",
-        "ME009",
-        "ME010"
-      ]
-    }
-  ];
-  const examConfig = getDefaultExamConfig();
-  examConfig.examName = "MID TERM EXAMINATIONS";
-  examConfig.examDate = "May 10, 2025";
-  examConfig.examTime = "09:30 a.m. - 11:30 a.m.";
-  const options = {
-    outputFile: "seating-plan.xlsx",
-    examConfig,
-    studentGroups,
-    rooms
-  };
-  try {
-    const filePath = await generateSeatingPlan(options);
-    console.log(`Seating plan generated successfully at: ${filePath}`);
-  } catch (error2) {
-    console.error("Error generating seating plan:", error2);
-  }
-}
 createRequire(import.meta.url);
 const __dirname = path$d.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path$d.join(__dirname, "..");
@@ -63631,7 +63539,9 @@ ipcMain.handle("generate-seating-plan", async (_2, arg) => {
     if (processedStudentGroups.length === 0) {
       throw new Error("No valid student data could be processed from the provided files.");
     }
-    const rooms = roomsFromRenderer.map((r) => new Room(r.name, r.rows, r.cols || "Default Location"));
+    const rooms = roomsFromRenderer.map((r) => {
+      return new Room(r.name, r.columns, "Default Location");
+    });
     const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[T:.-]/g, "").slice(0, 14);
     const defaultDownloadsPath = app.getPath("downloads");
     const outputFile = path$d.join(defaultDownloadsPath, `SeatingPlan_${timestamp}.xlsx`);
@@ -63752,7 +63662,6 @@ ipcMain.handle("count-students", async (_2, arg) => {
     return { success: false, error: error2.message || "Unknown error counting students." };
   }
 });
-generateExampleSeatingPlanExcel().catch(console.error);
 app.whenReady().then(createWindow);
 export {
   MAIN_DIST,

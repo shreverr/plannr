@@ -138,7 +138,10 @@ function NewSeatingPlan() {
      const totalRoomCapacity = data.selectedRooms
         .map(roomId => availableRooms.find(r => r.id === roomId))
         .filter((room): room is NonNullable<typeof room> => room !== undefined)
-        .reduce((total, room) => total + (room.rows * room.columns), 0);
+        .reduce((total, room) => {
+          // Calculate capacity based on columns structure
+          return total + room.columns.reduce((sum, col) => sum + col.rowCount, 0);
+        }, 0);
 
      // Get total student count from all CSV files
      let totalStudents = 0;
@@ -165,14 +168,14 @@ function NewSeatingPlan() {
 
     // 1. Prepare ExamConfig
     const examConfig = {
-      examName: data.examinationName.toUpperCase(), // Example: Make uppercase
-      examDate: data.date, // Assuming format is already DD/MM/YYYY or similar
+      examName: data.examinationName.toUpperCase(),
+      examDate: data.date,
       examTime: `${formatTime12Hour(data.fromTime)} - ${formatTime12Hour(data.toTime)}`,
       cloakRoom: data.cloakRoomVenue,
-      // Split instructions by newline, trim whitespace, and filter empty lines
       instructions: data.mandatoryInstructions.split('\n').map(line => line.trim()).filter(line => line.length > 0),
-      // logoPath: // Optional: Get path from config or leave undefined
-      examMode: data.examMode, // Pass examMode to backend if needed
+      examMode: data.examMode,
+      examType: data.examType, // Add examType to match main.ts
+      session: data.session // Add session to match main.ts
     };
 
     // 2. Prepare StudentGroups (using file paths)
@@ -181,6 +184,8 @@ function NewSeatingPlan() {
       .map(upload => ({
         branchCode: upload.branchCode,
         subjectCode: upload.subjectCode,
+        semester: upload.semester, // Add semester
+        batchYear: upload.batchYear, // Add batchYear
         csvFilePath: upload.csvFilePath!, // Pass the path (non-null asserted due to filter)
         studentList: [] // Main process will populate this
       }));
@@ -188,19 +193,18 @@ function NewSeatingPlan() {
     // 3. Prepare Rooms
     const selectedRoomDetails = data.selectedRooms
         .map(roomId => availableRooms.find(r => r.id === roomId))
-        .filter((room): room is NonNullable<typeof room> => room !== undefined) // Type guard to filter out undefined and satisfy TS
+        .filter((room): room is NonNullable<typeof room> => room !== undefined)
         .map(room => ({
             name: room.name,
-            rows: room.rows,
-            cols: room.columns, // Map 'columns' to 'cols'
-            buildingLocation: "Default Location" // Add location if available in store, else default - TODO: Add buildingLocation to Room store type
+            // Convert to the new column-based structure expected by main.ts
+            columns: room.columns.map(col => ({ rowCount: col.rowCount })),
+            buildingLocation: "Default Location"
         }));
-
 
     try {
       // 4. Call IPC handler using the correct channel name
       console.log('Sending data to main:', { examConfig, studentGroups, rooms: selectedRoomDetails });
-      const result = await window.ipcRenderer.invoke('generate-seating-plan', { // Use invoke and the correct channel name
+      const result = await window.ipcRenderer.invoke('generate-seating-plan', {
         examConfig,
         studentGroups,
         rooms: selectedRoomDetails,
