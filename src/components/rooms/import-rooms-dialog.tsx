@@ -7,51 +7,45 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Column } from "@/store/rooms.store"
 
-type Room = {
-  id: string
-  name: string
-  rows: number
-  columns: number
-}
-
-type ImportRoomsDialogProps = {
-  rooms: Room[]
-  onConfirm: (rooms: Room[]) => void
-  onCancel: () => void
+interface ImportRoomsDialogProps {
+  rooms: Array<{ id: string; name: string; columns: Column[] }>
   open: boolean
+  onConfirm: (rooms: Array<{ id: string; name: string; columns: Column[] }>) => void
+  onCancel: () => void
 }
 
-export function ImportRoomsDialog({ rooms, onConfirm, onCancel, open }: ImportRoomsDialogProps) {
+export function ImportRoomsDialog({ rooms, open, onConfirm, onCancel }: ImportRoomsDialogProps) {
+  const calculateCapacity = (columns: Column[]) => {
+    return columns.reduce((total, col) => total + col.rowCount, 0)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Import Rooms</DialogTitle>
           <DialogDescription>
-            Review the rooms to be imported. Click confirm to add these rooms.
+            Review the rooms that will be imported
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-[300px] w-full rounded-md border p-4">
-          <div className="space-y-4">
-            {rooms.map((room, index) => (
-              <div key={index} className="space-y-1">
-                <h4 className="font-medium">{room.name}</h4>
-                <p className="text-sm text-muted-foreground">
-                  Size: {room.rows} x {room.columns}
-                </p>
+        <div className="max-h-[300px] overflow-y-auto">
+          {rooms.map((room) => (
+            <div key={room.id} className="py-2 border-b">
+              <div className="font-medium">{room.name}</div>
+              <div className="text-sm text-muted-foreground">
+                Columns: {room.columns.length} | Rows per column: {room.columns.map(col => col.rowCount).join(', ')}
               </div>
-            ))}
-          </div>
-        </ScrollArea>
+              <div className="text-sm text-muted-foreground">
+                Total capacity: {calculateCapacity(room.columns)} seats
+              </div>
+            </div>
+          ))}
+        </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button onClick={() => onConfirm(rooms)}>
-            Confirm Import
-          </Button>
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button onClick={() => onConfirm(rooms)}>Import {rooms.length} Rooms</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

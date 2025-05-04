@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import useRoomStore from "@/store/rooms.store"
+import useRoomStore, { Column } from "@/store/rooms.store"
 import { Button } from "@/components/ui/button"
 import { v4 as uuidv4 } from 'uuid'
 import { EditRoomDialog } from "@/components/rooms/edit-room-dialog"
@@ -9,7 +9,7 @@ import { useState } from "react"
 
 function RoomsManagement() {
   const { rooms, addRooms, removeRoomById, updateRoom, clearRooms } = useRoomStore()
-  const [importRooms, setImportRooms] = useState<Array<{ id: string; name: string; rows: number; columns: number; }>>([])
+  const [importRooms, setImportRooms] = useState<Array<{ id: string; name: string; columns: Column[] }>>([])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -20,21 +20,37 @@ function RoomsManagement() {
       const text = e.target?.result as string
       const lines = text.split('\n')
       
-      const parsedRooms = lines.slice(1)
+      // Parse CSV format: Room Name, Col1 Rows, Col2 Rows, Col3 Rows, ...
+      const parsedRooms = lines
         .filter(line => line.trim())
         .map(line => {
           const values = line.split(',').map(value => value.trim())
+          const roomName = values[0]
+          
+          // Create columns from the remaining values
+          const columns: Column[] = values.slice(1)
+            .filter(val => val && !isNaN(parseInt(val, 10)))
+            .map(rowCount => ({
+              id: uuidv4(),
+              rowCount: parseInt(rowCount, 10)
+            }))
+          
           return {
             id: uuidv4(),
-            name: values[0],
-            rows: parseInt(values[1], 10),
-            columns: parseInt(values[2], 10)
+            name: roomName,
+            columns
           }
         })
+        .filter(room => room.name && room.columns.length > 0)
 
       setImportRooms(parsedRooms)
     }
     reader.readAsText(file)
+  }
+
+  // Calculate total capacity of a room
+  const calculateCapacity = (columns: Column[]) => {
+    return columns.reduce((total, col) => total + col.rowCount, 0)
   }
 
   return (
@@ -69,7 +85,7 @@ function RoomsManagement() {
               key={importRooms.length > 0 ? 'uploading' : 'cleared'}
             />
             <div className="text-sm text-muted-foreground">
-              CSV format: Room Name, Rows, Columns [No Header]
+              CSV format: Room Name, Col1 Rows, Col2 Rows, Col3 Rows, ...
             </div>
           </div>
         </CardContent>
@@ -113,7 +129,10 @@ function RoomsManagement() {
                   <div>
                     <div className="font-medium">{room.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      Size: {room.rows} x {room.columns}
+                      Columns: {room.columns.length} | Rows per column: {room.columns.map(col => col.rowCount).join(', ')}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Total capacity: {calculateCapacity(room.columns)} seats
                     </div>
                   </div>
                   <div className="flex items-center gap-4">

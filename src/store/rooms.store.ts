@@ -1,11 +1,15 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export type Column = {
+  id: string;
+  rowCount: number;
+}
+
 export type Room = {
   id: string;
   name: string;
-  rows: number;
-  columns: number;
+  columns: Column[];
 }
 
 type RoomStore = {

@@ -9,6 +9,11 @@ export function RoomSelectionTable() {
   const { rooms } = useRoomStore();
   const form = useFormContext();
 
+  // Calculate total capacity of a room
+  const calculateCapacity = (room: any) => {
+    return room.columns.reduce((total: number, col: any) => total + col.rowCount, 0);
+  }
+
   if (rooms.length === 0) {
     return (
       <div className="text-center py-6 text-muted-foreground">
@@ -39,7 +44,7 @@ export function RoomSelectionTable() {
                     />
                   </TableHead>
                   <TableHead>Room Name</TableHead>
-                  <TableHead>Dimensions</TableHead>
+                  <TableHead>Columns</TableHead>
                   <TableHead>Capacity</TableHead>
                 </TableRow>
               </TableHeader>
@@ -64,10 +69,10 @@ export function RoomSelectionTable() {
                       <Label htmlFor={room.id}>{room.name}</Label>
                     </TableCell>
                     <TableCell>
-                      {room.rows} × {room.columns}
+                      {room.columns.map(col => col.rowCount).join(' + ')} rows
                     </TableCell>
                     <TableCell>
-                      {room.rows * room.columns} seats
+                      {calculateCapacity(room)} seats
                     </TableCell>
                   </TableRow>
                 ))}

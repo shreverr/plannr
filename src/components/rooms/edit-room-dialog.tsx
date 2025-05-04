@@ -2,155 +2,126 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Room } from "@/store/rooms.store"
 import { useState } from "react"
+import { Room, Column } from "@/store/rooms.store"
+import { v4 as uuidv4 } from 'uuid'
+import { Plus, Trash2 } from "lucide-react"
 
-type EditRoomDialogProps = {
+interface EditRoomDialogProps {
   room: Room
-  onSave: (updatedRoom: Room) => void
+  onSave: (room: Room) => void
 }
 
 export function EditRoomDialog({ room, onSave }: EditRoomDialogProps) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(room.name)
-  const [rows, setRows] = useState(room.rows)
-  const [columns, setColumns] = useState(room.columns)
-  const [errors, setErrors] = useState({
-    name: '',
-    rows: '',
-    columns: ''
-  })
+  const [columns, setColumns] = useState<Column[]>(room.columns)
 
-  const validateForm = () => {
-    const newErrors = {
-      name: '',
-      rows: '',
-      columns: ''
-    }
-
-    if (!name.trim()) {
-      newErrors.name = 'Room name is required'
-    }
-
-    if (rows < 1) {
-      newErrors.rows = 'Rows must be at least 1'
-    }
-
-    if (columns < 1) {
-      newErrors.columns = 'Columns must be at least 1'
-    }
-
-    setErrors(newErrors)
-    return !Object.values(newErrors).some(error => error !== '')
+  const handleAddColumn = () => {
+    setColumns([...columns, { id: uuidv4(), rowCount: 1 }])
   }
 
-  const handleSave = () => {
-    if (validateForm()) {
+  const handleRemoveColumn = (id: string) => {
+    if (columns.length > 1) {
+      setColumns(columns.filter(col => col.id !== id))
+    }
+  }
+
+  const handleColumnChange = (id: string, rowCount: number) => {
+    setColumns(columns.map(col => 
+      col.id === id ? { ...col, rowCount } : col
+    ))
+  }
+
+  const handleSubmit = () => {
+    if (name.trim() && columns.length > 0) {
       onSave({
         ...room,
-        name,
-        rows,
-        columns,
+        name: name.trim(),
+        columns
       })
       setOpen(false)
     }
   }
 
-  const handleRowsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value)
-    setRows(value)
-    if (value < 1) {
-      setErrors(prev => ({ ...prev, rows: 'Rows must be at least 1' }))
-    } else {
-      setErrors(prev => ({ ...prev, rows: '' }))
+  const handleOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      // Reset form when opening
+      setName(room.name)
+      setColumns([...room.columns])
     }
-  }
-
-  const handleColumnsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value)
-    setColumns(value)
-    if (value < 1) {
-      setErrors(prev => ({ ...prev, columns: 'Columns must be at least 1' }))
-    } else {
-      setErrors(prev => ({ ...prev, columns: '' }))
-    }
-  }
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setName(value)
-    if (!value.trim()) {
-      setErrors(prev => ({ ...prev, name: 'Room name is required' }))
-    } else {
-      setErrors(prev => ({ ...prev, name: '' }))
-    }
+    setOpen(isOpen)
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">Edit</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit Room</DialogTitle>
+          <DialogDescription>
+            Update the details for this room
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">Name</Label>
-            <div className="col-span-3">
-              <Input
-                id="name"
-                value={name}
-                onChange={handleNameChange}
-                className={errors.name ? 'border-red-500' : ''}
-              />
-              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-            </div>
+            <Label htmlFor="edit-name" className="text-right">
+              Room Name
+            </Label>
+            <Input
+              id="edit-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="col-span-3"
+            />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="rows" className="text-right">Rows</Label>
-            <div className="col-span-3">
-              <Input
-                id="rows"
-                type="number"
-                min="1"
-                value={rows}
-                onChange={handleRowsChange}
-                className={errors.rows ? 'border-red-500' : ''}
-              />
-              {errors.rows && <p className="text-red-500 text-sm mt-1">{errors.rows}</p>}
-            </div>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="columns" className="text-right">Columns</Label>
-            <div className="col-span-3">
-              <Input
-                id="columns"
-                type="number"
-                min="1"
-                value={columns}
-                onChange={handleColumnsChange}
-                className={errors.columns ? 'border-red-500' : ''}
-              />
-              {errors.columns && <p className="text-red-500 text-sm mt-1">{errors.columns}</p>}
-            </div>
+          
+          <div className="space-y-2">
+            <Label className="block mb-2">Columns Configuration</Label>
+            {columns.map((column, index) => (
+              <div key={column.id} className="flex items-center gap-2">
+                <Label className="w-24 text-right">Column {index + 1}</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={column.rowCount}
+                  onChange={(e) => handleColumnChange(column.id, parseInt(e.target.value) || 1)}
+                  className="flex-1"
+                  placeholder="Number of rows"
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => handleRemoveColumn(column.id)}
+                  disabled={columns.length <= 1}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-2"
+              onClick={handleAddColumn}
+            >
+              <Plus className="h-4 w-4 mr-2" /> Add Column
+            </Button>
           </div>
         </div>
-        <div className="flex justify-end">
-          <Button
-            onClick={handleSave}
-            disabled={Object.values(errors).some(error => error !== '')}
-          >
-            Save changes
-          </Button>
-        </div>
+        <DialogFooter>
+          <Button onClick={handleSubmit}>Save Changes</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
