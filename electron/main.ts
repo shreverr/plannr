@@ -7,7 +7,7 @@ import Papa from 'papaparse'; // Import papaparse for CSV parsing
  // Import StudentGroup instead of Student
 //  import { generateSeatingPlan, Room, StudentGroup } from './generator'
 import { AttendanceData, generateAttendanceSheet, StudentAttendanceInfo } from './attendance-gen';
-import { generateSeatingPlan, Room, StudentGroup } from './excel-seating-gen';
+import { generateExampleSeatingPlanExcel, generateSeatingPlan, Room, StudentGroup } from './excel-seating-gen';
 // import { generateExampleSeatingPlanExcel } from './excel-seating-gen';
 
 createRequire(import.meta.url)
@@ -336,5 +336,5 @@ ipcMain.handle('count-students', async (_, arg) => {
 });
 
 // exampleAttendanceGeneration()
-// generateExampleSeatingPlanExcel().catch(console.error);
+generateExampleSeatingPlanExcel().catch(console.error);
 app.whenReady().then(createWindow)

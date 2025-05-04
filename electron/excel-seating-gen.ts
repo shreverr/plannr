@@ -2,22 +2,26 @@ import path from 'path';
 import fs from 'fs';
 import ExcelJS from 'exceljs';
 
+// Updated Room class to match the new structure in rooms.store.ts
 class Room {
   name: string;
-  rows: number;
-  cols: number;
+  columns: { rowCount: number }[];
   capacity: number;
   buildingLocation: string;
   seatingGrid: (string | null)[][]; // Stores student IDs
 
-  constructor(name: string, rows: number, cols: number, buildingLocation: string = "DE-MORGAN BLOCK FIRST FLOOR") {
+  constructor(name: string, columns: { rowCount: number }[], buildingLocation: string = "DE-MORGAN BLOCK FIRST FLOOR") {
     this.name = name;
-    this.rows = rows;
-    this.cols = cols;
-    this.capacity = rows * cols;
+    this.columns = columns;
+    // Calculate total capacity from all columns
+    this.capacity = columns.reduce((sum, col) => sum + col.rowCount, 0);
     this.buildingLocation = buildingLocation;
-    // Initialize grid with nulls
-    this.seatingGrid = Array(rows).fill(null).map(() => Array(cols).fill(null));
+    
+    // Find the maximum row count across all columns
+    const maxRows = Math.max(...columns.map(col => col.rowCount));
+    
+    // Initialize grid with nulls - now using column-specific row counts
+    this.seatingGrid = Array(maxRows).fill(null).map(() => Array(columns.length).fill(null));
   }
 }
 
@@ -44,7 +48,7 @@ export interface SeatingPlanOptions {
   rooms: Room[];
 }
 
-// Assign seats based on StudentGroup
+// Updated to work with the new room structure
 function assignSeatsByGroup(studentGroups: StudentGroup[], rooms: Room[]): Room[] {
   // Log student group info
   studentGroups.forEach((g) => {
@@ -69,26 +73,27 @@ function assignSeatsByGroup(studentGroups: StudentGroup[], rooms: Room[]): Room[
   // Assign students room by room
   for (const room of rooms) {
     // Iterate column first, then row to fill column-wise
-    for (let col = 0; col < room.cols; col++) {
+    for (let colIdx = 0; colIdx < room.columns.length; colIdx++) {
       // Determine the target group index for this column
-      const targetGroupIndex = groupIndices[col % groupIndices.length];
+      const targetGroupIndex = groupIndices[colIdx % groupIndices.length];
       const groupStudentList = groupMap.get(targetGroupIndex);
+      const columnRowCount = room.columns[colIdx].rowCount;
 
-      for (let row = 0; row < room.rows; row++) {
+      for (let rowIdx = 0; rowIdx < columnRowCount; rowIdx++) {
         // Check if there are students left for the target group
         if (groupStudentList && groupStudentList.length > 0) {
           // Assign the next available student ID from that group
           const studentId = groupStudentList.shift(); // Take the first student ID
-          room.seatingGrid[row][col] = studentId!; // Assign ID string
+          room.seatingGrid[rowIdx][colIdx] = studentId!; // Assign ID string
           studentsAssigned++;
         } else {
           // No more students for this group, leave the seat null
-          room.seatingGrid[row][col] = null;
+          room.seatingGrid[rowIdx][colIdx] = null;
         }
         // Optimization: Check if all students have been assigned.
         if (studentsAssigned >= totalStudentsToAssign) {
           // Exit inner loops if all students are seated
-          col = room.cols; // This will break the outer col loop
+          colIdx = room.columns.length; // This will break the outer col loop
           break; // Exit the row loop
         }
       }
@@ -118,7 +123,7 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
 
   // Deep cloning rooms to avoid modifying the originals
   const roomsClone = rooms.map(room => {
-    const newRoom = new Room(room.name, room.rows, room.cols, room.buildingLocation);
+    const newRoom = new Room(room.name, room.columns, room.buildingLocation);
     return newRoom;
   });
 
@@ -142,15 +147,15 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
         paperSize: 9, // A4
         orientation: 'landscape',
         fitToPage: true,
-        fitToWidth: 1  ,
+        fitToWidth: 1,
         fitToHeight: 1,
         horizontalCentered: true,
         verticalCentered: false
       }
     });
 
-    // Set column widths
-    const colCount = Math.min(room.cols, 10);  // Limit columns to prevent overflow
+    // Set column widths - now using the actual number of columns in the room
+    const colCount = room.columns.length;
     worksheet.columns = [
       { width: 8 }, // S.No. column
       ...Array(colCount).fill({ width: 15 }) // Columns for student IDs
@@ -272,14 +277,19 @@ function generateSeatingPlan(options: SeatingPlanOptions): Promise<string> {
     });
     currentRow++;
     
-    // Table Data Rows
-    for (let rowIdx = 0; rowIdx < room.rows; rowIdx++) {
+    // Find the maximum row count for this room
+    const maxRows = Math.max(...room.columns.map(col => col.rowCount));
+    
+    // Table Data Rows - now handling variable row counts per column
+    for (let rowIdx = 0; rowIdx < maxRows; rowIdx++) {
       const dataRow = worksheet.addRow([rowIdx + 1]);
       dataRow.height = 18;
       
       // Set student IDs
       for (let colIdx = 0; colIdx < colCount; colIdx++) {
-        const studentId = colIdx < room.cols ? room.seatingGrid[rowIdx][colIdx] : null;
+        // Only show student ID if this row exists for this column
+        const columnRowCount = room.columns[colIdx].rowCount;
+        const studentId = rowIdx < columnRowCount ? room.seatingGrid[rowIdx][colIdx] : null;
         dataRow.getCell(colIdx + 2).value = studentId || '---';
         dataRow.getCell(colIdx + 2).alignment = { horizontal: 'center', vertical: 'middle' };
       }
@@ -427,12 +437,21 @@ export {
   getDefaultExamConfig
 };
 
-// Example usage function
+// Example usage function - updated for new room structure
 export async function generateExampleSeatingPlanExcel() {
-  // Create some example rooms
+  // Create some example rooms with the new column structure
   const rooms = [
-    new Room('DM-101', 8, 6, 'DE-MORGAN BLOCK FIRST FLOOR'),
-    new Room('DM-102', 7, 5, 'DE-MORGAN BLOCK FIRST FLOOR')
+    new Room('DM-101', [
+      { rowCount: 3 },
+      { rowCount: 4 },
+      { rowCount: 4 },
+      { rowCount: 2 },
+    ], 'DE-MORGAN BLOCK FIRST FLOOR'),
+    new Room('DM-102', [
+      { rowCount: 7 },
+      { rowCount: 5 },
+      { rowCount: 4 },
+    ], 'DE-MORGAN BLOCK FIRST FLOOR')
   ];
 
   // Create example student groups

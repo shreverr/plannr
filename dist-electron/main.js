@@ -63177,19 +63177,18 @@ var excel = exceljs_nodejs;
 const ExcelJS = /* @__PURE__ */ getDefaultExportFromCjs(excel);
 class Room {
   // Stores student IDs
-  constructor(name, rows, cols, buildingLocation = "DE-MORGAN BLOCK FIRST FLOOR") {
+  constructor(name, columns, buildingLocation = "DE-MORGAN BLOCK FIRST FLOOR") {
     __publicField(this, "name");
-    __publicField(this, "rows");
-    __publicField(this, "cols");
+    __publicField(this, "columns");
     __publicField(this, "capacity");
     __publicField(this, "buildingLocation");
     __publicField(this, "seatingGrid");
     this.name = name;
-    this.rows = rows;
-    this.cols = cols;
-    this.capacity = rows * cols;
+    this.columns = columns;
+    this.capacity = columns.reduce((sum, col) => sum + col.rowCount, 0);
     this.buildingLocation = buildingLocation;
-    this.seatingGrid = Array(rows).fill(null).map(() => Array(cols).fill(null));
+    const maxRows = Math.max(...columns.map((col) => col.rowCount));
+    this.seatingGrid = Array(maxRows).fill(null).map(() => Array(columns.length).fill(null));
   }
 }
 function assignSeatsByGroup(studentGroups, rooms) {
@@ -63207,19 +63206,20 @@ function assignSeatsByGroup(studentGroups, rooms) {
   let totalStudentsToAssign = studentGroups.reduce((sum, group) => sum + group.studentList.length, 0);
   let studentsAssigned = 0;
   for (const room of rooms) {
-    for (let col = 0; col < room.cols; col++) {
-      const targetGroupIndex = groupIndices[col % groupIndices.length];
+    for (let colIdx = 0; colIdx < room.columns.length; colIdx++) {
+      const targetGroupIndex = groupIndices[colIdx % groupIndices.length];
       const groupStudentList = groupMap.get(targetGroupIndex);
-      for (let row2 = 0; row2 < room.rows; row2++) {
+      const columnRowCount = room.columns[colIdx].rowCount;
+      for (let rowIdx = 0; rowIdx < columnRowCount; rowIdx++) {
         if (groupStudentList && groupStudentList.length > 0) {
           const studentId = groupStudentList.shift();
-          room.seatingGrid[row2][col] = studentId;
+          room.seatingGrid[rowIdx][colIdx] = studentId;
           studentsAssigned++;
         } else {
-          room.seatingGrid[row2][col] = null;
+          room.seatingGrid[rowIdx][colIdx] = null;
         }
         if (studentsAssigned >= totalStudentsToAssign) {
-          col = room.cols;
+          colIdx = room.columns.length;
           break;
         }
       }
@@ -63236,7 +63236,7 @@ function assignSeatsByGroup(studentGroups, rooms) {
 function generateSeatingPlan(options) {
   const { studentGroups, rooms, examConfig } = options;
   const roomsClone = rooms.map((room) => {
-    const newRoom = new Room(room.name, room.rows, room.cols, room.buildingLocation);
+    const newRoom = new Room(room.name, room.columns, room.buildingLocation);
     return newRoom;
   });
   const assignedRooms = assignSeatsByGroup(studentGroups, roomsClone);
@@ -63259,7 +63259,7 @@ function generateSeatingPlan(options) {
         verticalCentered: false
       }
     });
-    const colCount = Math.min(room.cols, 10);
+    const colCount = room.columns.length;
     worksheet2.columns = [
       { width: 8 },
       // S.No. column
@@ -63357,11 +63357,13 @@ function generateSeatingPlan(options) {
       cell2.alignment = { horizontal: "center", vertical: "middle" };
     });
     currentRow++;
-    for (let rowIdx = 0; rowIdx < room.rows; rowIdx++) {
+    const maxRows = Math.max(...room.columns.map((col) => col.rowCount));
+    for (let rowIdx = 0; rowIdx < maxRows; rowIdx++) {
       const dataRow = worksheet2.addRow([rowIdx + 1]);
       dataRow.height = 18;
       for (let colIdx = 0; colIdx < colCount; colIdx++) {
-        const studentId = colIdx < room.cols ? room.seatingGrid[rowIdx][colIdx] : null;
+        const columnRowCount = room.columns[colIdx].rowCount;
+        const studentId = rowIdx < columnRowCount ? room.seatingGrid[rowIdx][colIdx] : null;
         dataRow.getCell(colIdx + 2).value = studentId || "---";
         dataRow.getCell(colIdx + 2).alignment = { horizontal: "center", vertical: "middle" };
       }
@@ -63451,6 +63453,109 @@ function generateSeatingPlan(options) {
       reject2(error2);
     });
   });
+}
+function getDefaultExamConfig() {
+  return {
+    examName: "END TERM EXAMINATIONS",
+    examDate: (/* @__PURE__ */ new Date()).toLocaleDateString(),
+    examTime: "01:00 p.m. - 04:00 p.m.",
+    cloakRoom: "OAT, Ground Floor, Le Corbusier Block",
+    instructions: [
+      "1. No student should be allowed to leave the Examination Hall before half time.",
+      "2. Mobile phones/Smart Watches/Electronic devices are strictly prohibited in examination halls; candidates are strictly banned",
+      "   from carrying these devices. If found with any such device, the same shall be confiscated and UMC will be registered.",
+      "3. No student is allowed to leave the examination hall before half time.",
+      "4. Students without admit card must report to Conduct Branch, Examination Wing (First Floor) with University Identity Card.",
+      "5. No student is allowed to carry any paper/book/notes/mobile/calculator etc. inside the examination venue.",
+      "6. Students must reach at least 15 minutes before the start of Examination at the respective examination venue."
+    ]
+  };
+}
+async function generateExampleSeatingPlanExcel() {
+  const rooms = [
+    new Room("DM-101", [
+      { rowCount: 3 },
+      { rowCount: 4 },
+      { rowCount: 4 },
+      { rowCount: 2 }
+    ], "DE-MORGAN BLOCK FIRST FLOOR"),
+    new Room("DM-102", [
+      { rowCount: 7 },
+      { rowCount: 5 },
+      { rowCount: 4 }
+    ], "DE-MORGAN BLOCK FIRST FLOOR")
+  ];
+  const studentGroups = [
+    {
+      branchCode: "CSE",
+      subjectCode: "CS-101",
+      studentList: [
+        "CSE001",
+        "CSE002",
+        "CSE003",
+        "CSE004",
+        "CSE005",
+        "CSE006",
+        "CSE007",
+        "CSE008",
+        "CSE009",
+        "CSE010",
+        "CSE011",
+        "CSE012",
+        "CSE013",
+        "CSE014",
+        "CSE015"
+      ]
+    },
+    {
+      branchCode: "ECE",
+      subjectCode: "EC-101",
+      studentList: [
+        "ECE001",
+        "ECE002",
+        "ECE003",
+        "ECE004",
+        "ECE005",
+        "ECE006",
+        "ECE007",
+        "ECE008",
+        "ECE009",
+        "ECE010"
+      ]
+    },
+    {
+      branchCode: "ME",
+      subjectCode: "ME-101",
+      studentList: [
+        "ME001",
+        "ME002",
+        "ME003",
+        "ME004",
+        "ME005",
+        "ME006",
+        "ME007",
+        "ME008",
+        "ME009",
+        "ME010"
+      ]
+    }
+  ];
+  const examConfig = getDefaultExamConfig();
+  examConfig.examName = "MID TERM EXAMINATIONS";
+  examConfig.examDate = "May 10, 2025";
+  examConfig.examTime = "09:30 a.m. - 11:30 a.m.";
+  const options = {
+    outputFile: "seating-plan.xlsx",
+    examConfig,
+    studentGroups,
+    rooms
+  };
+  try {
+    const filePath = await generateSeatingPlan(options);
+    console.log(`Seating plan generated successfully at: ${filePath}`);
+  } catch (error2) {
+    console.error("Error generating seating plan:", error2);
+  }
 }
 createRequire(import.meta.url);
 const __dirname = path$d.dirname(fileURLToPath(import.meta.url));
@@ -63647,6 +63752,7 @@ ipcMain.handle("count-students", async (_2, arg) => {
     return { success: false, error: error2.message || "Unknown error counting students." };
   }
 });
+generateExampleSeatingPlanExcel().catch(console.error);
 app.whenReady().then(createWindow);
 export {
   MAIN_DIST,
